@@ -23,4 +23,37 @@ One entry per confirmed decision, newest phase last. Tickets cite these entries 
 - **Data:** Open-Meteo is the primary source (no key needed; free for non-commercial use). KNMI Open Data is the fallback.
 - **Kill criterion:** after 2 weeks with 10-20 real users, if fewer than 20% open the app in the morning for 5 days in a row, stop or rethink the algorithm.
 
-## Phase 2 — Tools & cost (in progress)
+## Phase 2 — Tools & cost (confirmed 2026-10-15)
+
+Researched 2026-10-15 by the `researcher` agent. The official sites were blocked by the egress proxy, so most facts come from the official docs' GitHub sources. The Cloudflare subrequest and CPU limits were spot-checked in cloudflare-docs.
+
+| Need | Choice | License / ToS | Cost |
+|---|---|---|---|
+| Frontend | Svelte 5 + Vite, installable PWA (Android + iOS) | MIT | €0 |
+| Hosting | Cloudflare Workers static assets: one project for the PWA and the Worker | Free plan | €0 |
+| Morning push | Worker cron trigger + `@block65/webcrypto-web-push` (VAPID, RFC 8291, runs on Workers) | MIT | €0 |
+| Storage | Cloudflare D1: subscriptions, routes, notification times | Free plan: 5M rows read/day, 100k written/day, 5 GB | €0 |
+| Weather | Open-Meteo forecast API, cached per ~1 km cell per hour; KNMI Data Platform (HARMONIE-AROME) as fallback | Open-Meteo: free for non-commercial use only; CC BY 4.0, link required next to displayed data. KNMI: CC BY 4.0, personal key | €0 |
+| Address input | PDOK Locatieserver (`suggest` + `lookup`). No map in v1 | Open and free | €0 |
+
+**Decisions:**
+- **Cloudflare plan:** stay on Workers Free and move to Workers Paid ($5/month, overage auto-billed) only when the logs show limit errors or users go past ~40. Free allows 50 external subrequests and 10 ms of CPU per cron run, so the cron processes users in batches from the start.
+- **Map:** none in v1. The address search plus a static preview of the direction replace it, which removes the tile dependency and its attribution.
+- **Pro tier:** out of v1. v1 has no subscriptions and no ads, so it stays non-commercial under Open-Meteo's terms. A paid tier would need Open-Meteo's commercial plan (about $29/month; the live price is unverified), so roughly $34/month in total with Workers Paid.
+
+**Cost estimates:** about €0/month at 20 users and at 200 users (with batching). About $5/month at 5,000 users, still non-commercial. A domain name is extra if one is wanted.
+
+**Rejected:**
+- Nominatim: its public instance bans autocomplete.
+- tile.openstreetmap.org: access can be withdrawn at any time.
+- Buienradar feed: mobile and commercial use need Buienradar's permission.
+- `web-push` (npm): Node-only, last release 2024.
+- Workers KV: limited to 1,000 writes per day, and scanning every subscription needs paginated list calls.
+
+**Still unverified:**
+- Apple web-push rate limits.
+- PDOK licence text and rate limit.
+- Open-Meteo's live commercial price.
+- Whether Cloudflare's Free plan asks for a card.
+
+## Phase 3 — Architecture (in progress)
