@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.wrangler/
+package-lock.json
+src/worker/worker-configuration.d.ts
+docs/
+*.md

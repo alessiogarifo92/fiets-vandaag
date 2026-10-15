@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fiets-vandaag",
+  "account_id": "02a4c350badad3fae1cee187b3a0f738",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  // Free workers.dev origin (docs/decisions.md, phase 3). Preview URLs give each PR its own address.
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "not_found_handling": "single-page-application",
+    // Only the API reaches the Worker; every other path is served as a static asset.
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fiets-vandaag",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "vars": {
+    // Public half of the VAPID pair; the private half is the VAPID_PRIVATE_KEY secret (README.md).
+    "VAPID_PUBLIC_KEY": "BFrGVcDRXQBC6PQNYVBkrNJv1Rb9oq6FQfVpNV6vcs_B8mRb1CHPZCvkMmap2iLnvsB5kxmKHaGHDvX_4R34Yik",
+    "VAPID_SUBJECT": "https://fiets-vandaag.alessiogarifo92.workers.dev",
+    "MAX_DEVICES": "50",
+  },
+  // Workers Free only: no cron yet (ticket 5 adds the single one), no other bindings.
+  "observability": {
+    "enabled": true,
+  },
+}
