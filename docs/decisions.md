@@ -78,7 +78,10 @@ The full design is in `docs/architecture.md`. The `architect` agent proposed it 
 - **Kill-criterion instrumentation.** The `opens(device, date, source)` log, kept for 30 days.
 - **Origin.** Free `workers.dev`, no custom domain, in line with the zero-billing rule. Moving to a real domain later means testers reinstall the app and re-enable notifications.
 
-## Phase 3.5 — Design UI/UX (in progress)
+## Phase 3.5 — Design UI/UX (chosen 2026-10-15)
+
+**Chosen: B · Polder.** The user delegated the choice. It carries the verdict pill from A and the best-moment row from C, and its colors were darkened to pass WCAG AA. The tokens and screen rules are in the root `DESIGN.md`, which every UI ticket references.
+
 
 Three directions are drawn on the same three screens (route setup, Today, hour by hour). Each comes with its palette, type and motion tokens, and the user picks one. Canvas: https://claude.ai/artifact/QzS6XDFiEtAgiLFvLxR866
 
