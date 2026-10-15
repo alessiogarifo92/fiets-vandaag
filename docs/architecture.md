@@ -1,151 +1,161 @@
-# Architecture (DRAFT, phase 3, not yet confirmed by the user)
+# Architecture (phase 3, confirmed 2026-10-15)
 
-Proposed by the `architect` agent on 2026-10-15 and revised for the zero-billing rule and the budget of at most 3 cron triggers (see `docs/decisions.md`).
+The `architect` agent proposed this design and the `critic` agent red-teamed it. The user confirmed the simplified v1. Constraints come from `docs/decisions.md`: Workers Free only, nothing ever billed, at most 3 cron triggers, Svelte 5 PWA, D1, Open-Meteo, PDOK, EN/NL/IT, no login.
+
+v1 audience: at most ~50 invited commuters in the Netherlands. Every simplification below is sized for that audience; the "Deferred" section lists what returns when the cap is raised.
 
 ## 1. Layout
-A single Vite project with `@cloudflare/vite-plugin` builds both the SPA and the Worker.
+One Vite project with `@cloudflare/vite-plugin` builds both the SPA and the Worker.
 
-- **`src/core/`**: pure TypeScript.
-  - `geo.ts`: bearing, rounding to a ~1 km cell, midpoint.
+- **`src/core/`**: pure TypeScript. A per-folder tsconfig `lib` keeps DOM and Workers types out of it.
+  - `geo.ts`: bearing, rounding to a cell of about 1 km, midpoint.
   - `wind.ts`: head-, cross- and tailwind components.
   - `rain.ts`: rain aggregated over the commute window.
-  - `score.ts`: a 1-10 score, a `bike|pt|shift` verdict and reason codes.
-  - `schedule.ts`: computes the next run time with `Intl`, aware of DST.
-  - `validate.ts`: request shapes shared by app and Worker.
-  - `i18n/{en,nl,it}.ts`.
+  - `score.ts`: 1-10 score, a `bike|pt|shift` verdict and reason codes.
+  - `schedule.ts`: the next run time in Europe/Amsterdam, DST-aware.
+  - `validate.ts`: hand-written request validators shared by app and Worker.
+  - `i18n/{en,nl,it}.ts`: a typed key catalog. Core returns reason codes; the app and the push localize them from the same catalog.
 - **`src/app/`**: Svelte 5 screens and `sw.ts`.
 - **`src/worker/`**: `index.ts` (fetch and scheduled handlers), `api/`, `cron/{drain,weather,push,cleanup}.ts`, `db.ts`, `auth.ts`, `errors.ts`.
-- **`migrations/`**.
-
-Each folder has its own tsconfig `lib` setting, which keeps `core` free of DOM and Workers types. Core returns reason codes, and both app and push localize them from the same catalog.
+- **`migrations/`**: D1 schema.
 
 ## 2. Identity without login
-- **Registration:** `POST /api/devices` returns `{deviceId, secret}`. Only `sha256(secret)` is stored. Requests carry `Authorization: Bearer id.secret`, checked with `timingSafeEqual`. The client keeps both values in IndexedDB.
-- **Push errors:**
-  - A 404/410 from the push service deletes the device.
-  - A 429/5xx is retried once, then skipped.
-  - Any other 4xx counts as a failure; after 3 failures the device is deleted.
-- **Endpoint refresh:** on app open, the client re-sends the push endpoint if it has changed.
+- **Joining:** an **invite code** is required to join. It travels as a secret inside the invite link or QR code and is a Worker secret. A global cap, `MAX_DEVICES` (default 50), answers 503 `capacity` when full.
+- **Registration:** `POST /api/devices` returns `{deviceId, secret}`. Only `sha256(secret)` is stored. Calls carry `Authorization: Bearer id.secret`, checked with `timingSafeEqual`. The client keeps both values in IndexedDB.
 - **Abuse protection:**
-  - Push endpoints must be on an allowlist (fcm, mozilla, apple, windows).
+  - Push endpoints must be on a host allowlist: fcm.googleapis.com, *.push.services.mozilla.com, web.push.apple.com, *.notify.windows.com. This also stops the cron from posting to arbitrary URLs.
   - Request bodies are limited to 2 KB.
-  - A welcome push is sent synchronously; if the push service rejects it, the API answers 422.
-  - A Rate Limiting binding allows 5 requests per IP per 60 s. Its availability on the Free plan is unverified.
-  - A global `MAX_DEVICES` cap answers 503 when reached.
+  - The welcome push is a UX check only, not an abuse barrier.
+- **Endpoint refresh:** every time the app opens, the client re-sends the push endpoint if it has changed.
+- **Push responses:**
+  - 404/410 deletes the device.
+  - 429/5xx is retried once inside the same run, then marked failed for the day.
+  - After 3 failures of any other 4xx, the device is deleted.
 
 ## 3. D1 schema
-- **`devices`**: `id`, `secret_hash`, `lang`, `tz`, `push_endpoint` (UNIQUE), `p256dh`, `auth`, `push_failures`, `created_at`, `last_seen_at`, `last_push_ok_at`.
+- **`devices`**: `id`, `secret_hash`, `lang` (en/nl/it), `push_endpoint` (UNIQUE), `p256dh`, `auth`, `push_failures`, `created_at`, `last_seen_at`, `last_push_ok_at`.
 - **`routes`**:
   - Keys: `id`, `device_id`, `slot` (1 or 2), UNIQUE(`device_id`, `slot`).
-  - Location: start and end coordinates as integers ×100 (~1 km); `cell`; `bearing_deg`.
-  - Timing: `window_start_min` / `window_end_min` (at most 180 min); a `weekdays` bitmask; `notify_min` (04:00-12:00 in 5-minute steps, or NULL); `next_run_at`; `lease_until`; `updated_at`.
-  - Partial index on `next_run_at`.
-- **`deliveries`**: primary key (`route_id`, `local_date`). Status is one of `claimed`, `sent`, `skipped_late`, `failed`. This table is the idempotency key.
+  - Location: `cell` (the route midpoint rounded to about 1 km) and `bearing_deg`. **Start and end points are never sent to the server.**
+  - Timing: `window_start_min` and `window_end_min` (at most 180 minutes apart), a `weekdays` bitmask, `notify_min` (04:00-12:00 in 5-minute steps, or NULL), `next_run_at`, `lease_until`, `updated_at`.
+  - A partial index on `next_run_at`.
+- **`deliveries`**: primary key (`route_id`, `local_date`). `status` is one of `claimed`, `retry`, `sent`, `skipped_late`, `no_data`, `failed`; there is also `attempts` and `http_status`.
 - **`weather_cache`**: `cell` (PK), `fetched_at`, `payload`.
-- **`meta`**: key/value pairs, holding `effective_batch` and `last_cleanup_at`.
+- **`opens`**: (`device_id`, `local_date`, `source` of `app` or `notification`), kept 30 days. This is the instrument for the kill criterion.
+- **Timezone:** hardcoded to Europe/Amsterdam. There is no `tz` column in v1.
 
-**Data minimization:**
-- The client computes the bearing from the exact points, then sends coordinates rounded to ~1 km.
-- Address text stays on the device. IP addresses are not stored.
+**Privacy:** this is pseudonymous personal data under the GDPR. The push endpoint is a persistent identifier, and the cell, bearing, window and weekdays together can point to a person.
+- **Retention:**
+  - Deleting from Settings removes everything for the device at once.
+  - A device with no app contact and no successful push for 60 days is deleted.
+  - Deliveries are kept 14 days, the weather cache 48 hours, `opens` 30 days.
+  - D1 Time Travel keeps deleted rows for 7 days; the privacy page says so.
+- **Third parties:** PDOK receives the typed address text. Open-Meteo receives the rounded cell and the user's IP, because the client calls it directly. Workers Logs must not log IPs, endpoints or coordinates.
 
-**Retention:**
-- Deleting from Settings removes everything at once.
-- Devices inactive for 60 days are deleted.
-- Deliveries are kept for 14 days, cached weather for 48 h.
-- D1 Time Travel keeps deleted data for 7 days. The privacy page must say so.
+## 4. Cron: one trigger, `* 2-11 * * *` (UTC)
+The UTC hours 02-11 cover 04:00-12:00 in Amsterdam under both CET and CEST. The account then uses 3 of its 5 Free triggers.
 
-## 4. Cron: one trigger, `* * * * *`
-The account will then use 3 of its 5 Free triggers.
+Overlapping runs must be assumed, and the lease covers them.
 
-Each run is **either** a drain **or** an idle run, never both.
+Each run:
+1. **Claim.** Take at most `BATCH_SIZE` due routes, a fixed environment value measured in ticket 3. One `batch()` does `UPDATE routes SET lease_until … RETURNING`.
+2. **Deliveries.** Upsert into `deliveries`. A route proceeds only when its row is new, or is in status `retry` with `attempts < 3`. When a route does not proceed, its `next_run_at` is still advanced to the next weekday, so it never takes a batch slot again.
+3. **Lateness check.** A route more than 15 minutes past `notify_min`, or past the start of its commute window, gets `skipped_late` and no push.
+4. **Weather.** Read the cache. Cells older than 50 minutes are fetched in **one** multi-location Open-Meteo request with `AbortSignal.timeout`. The variables, `models=` and cell coordinates match exactly what the app requests. If Open-Meteo fails:
+   - while `attempts < 3` and the next try still fits before the lateness cutoff, set `retry` with `next_run_at = now + 4 min`;
+   - otherwise send a short "no weather data today" push and mark `no_data`.
+5. **Send.** For each push:
+   - compute and encrypt it inside its own try/catch, so one malformed subscription cannot kill the batch;
+   - compute the VAPID headers once per push-service origin per run, and reuse them;
+   - use `pad: false` or a small fixed padding;
+   - set **TTL** to the seconds until the commute window starts (at least 300), `urgency: high`, and `topic: route-<slot>`.
+6. **Write back.** One `batch()` writes status and `http_status`, sets `next_run_at` to the next weekday, and removes devices that returned 410.
 
-**Drain:**
-1. Claim up to `effective_batch` due routes in one `batch()` (UPDATE with a lease, then RETURNING).
-2. `INSERT deliveries ... ON CONFLICT DO NOTHING RETURNING`, so each route gets at most one push.
-3. Read the weather cache. Cells older than 50 minutes are fetched in **one** multi-location Open-Meteo request.
-4. Compute, encrypt and send N pushes (`tag` = route-date).
-5. One `batch()` stores `next_run_at` and the status, and removes devices that returned 410.
+Budget per run: at most 1 + `BATCH_SIZE` external subrequests and at most about 6 D1 calls. Both Free caps are 50.
 
-Budget per run: at most 1 + N external subrequests and about 5 D1 calls.
+**Cleanup:** when nothing is due, the run executes one bounded retention delete (`LIMIT 50` per table), at most once an hour, keyed on the latest cleanup time stored in `weather_cache` under the special cell `_meta`.
 
-**Idle:** prefetch weather for cells due within 60 minutes, or run a bounded cleanup (`LIMIT 50` per table, at most once an hour).
+**Throughput:** with 50 users and a measured `BATCH_SIZE` of at least 2, everyone due at 07:00 gets their push within 15 minutes. If the measured value is 1, `MAX_DEVICES` is lowered until that still holds.
 
-**Overload degrades, with no billing:**
-- **Admission control:**
-  - Each 5-minute notify step holds at most `SLOT_CAP = BATCH_SIZE × 5` routes. That is about 20 per step if one push costs about 1 ms of CPU.
-  - A full step returns 409 `slot_full` with the nearest free times.
-  - `MAX_DEVICES` caps the total number of users.
-- **Lateness cutoff:** a route more than 15 minutes late, or past the start of its commute window, gets `skipped_late` and no push. The user can still open the app.
-- **Adaptive batch:** a delivery row still `claimed` after 5 minutes means the run was killed, most likely for exceeding CPU. The next run halves `effective_batch`, down to 1. A day with no kills raises it by 1.
+**CPU kills** are read from Workers Logs (`exceededCpu`). They are not inferred from stale rows.
 
-**Open-Meteo down:** retry at +5 minutes, up to 3 times. Then use cached weather up to 6 h old, labelled with its time. Otherwise send a "no weather data" push.
-
-**KNMI fallback dropped from v1:** HARMONIE data comes only as GRIB/HDF5 files, which cannot be parsed in a Free Worker.
-
-## 5. API (same origin, `/api/*`)
-- `POST /api/devices`
+## 5. API (same origin, `/api/*`, `run_worker_first` for `/api/*` only)
+- `POST /api/devices {invite, lang, push:{endpoint, keys:{p256dh, auth}}}` returns 201 `{deviceId, secret}`.
 - `GET|PATCH|DELETE /api/devices/me`
-- `PUT|DELETE /api/routes/:slot`
+- `PUT|DELETE /api/routes/:slot {cell, bearing, window:{start, end}, weekdays:[1..7], notifyAt|null}`
+- `POST /api/opens {date, source}`
 - `GET /api/health`
 
-The VAPID public key is fixed at build time. Validation is hand-written in `core/validate.ts`. Errors use the shape `{error:{code,message,fields?}}`.
+The VAPID public key is built into the app. The VAPID private key, the invite code and `MAX_DEVICES` are set with `wrangler secret put` or as environment variables. **Rotating the VAPID key invalidates every subscription.** Errors use the shape `{error:{code, message, fields?}}`.
 
-**Weather in the app:** the PWA calls Open-Meteo directly, which works because Open-Meteo allows CORS. The quota is then spread across each user's own IP. The push payload carries the computed result, and the service worker stores it so the app shows exactly what was pushed.
+**Weather in the app:** the PWA calls Open-Meteo directly with the rounded cell, so no Worker quota is spent. The push payload carries the computed verdict and its forecast time, and the service worker stores it.
+- Opened from a notification, the app shows the pushed verdict with its time.
+- If the live verdict differs, it shows "updated at HH:MM".
 
 ## 6. PWA
 - `/sw.js` has scope `/` and is served with `no-cache`.
 - Every push calls `showNotification`, because iOS revokes push for silent messages.
-- A notification click opens a deep link.
+- A notification click opens a deep link and logs an open with `source=notification`.
 - The app shell is precached, and the last result is kept in IndexedDB.
 - **iOS:**
-  - Outside standalone mode, the app shows an install guide.
+  - Onboarding starts with the install-to-Home-Screen step, because the installed PWA's storage is separate from Safari's.
   - The push toggle appears only in standalone mode, and permission is asked only on a tap.
-- **i18n:** a typed key catalog with `Intl`. A test checks that every key exists in all languages.
-- **Attribution:** "Weather data: Open-Meteo.com (CC BY 4.0)" appears under every recommendation.
-- **Library:** use `@block65/webcrypto-web-push` pinned to `^2.0.0`, because 1.x uses `aesgcm` and Apple rejects it.
+- **Attribution:** "Weather data: Open-Meteo.com (CC BY 4.0)" is linked under every recommendation and on the About page.
+- **Push library:** `@block65/webcrypto-web-push` pinned to `^2.0.0`, because 1.x uses `aesgcm`, which Apple rejects.
 
 ## 7. Testing
-- **Unit tests (core):**
-  - Bearing wrap-around, e.g. a 350° route with wind from 10°.
-  - The signs of the wind components.
+- **Unit tests (core, Vitest on Node):**
+  - Bearings N/E/S/W, and the wrap from 350° to 10°.
+  - The signs of the wind components at ±90° and 180°.
   - The off-by-one in the preceding-hour precipitation value.
   - The score is monotone in headwind.
-  - DST changes on 2026-03-29 and 2026-10-25.
-  - The weekday mask.
-  - The validators.
-  - i18n completeness.
+  - `nextRun` across 2026-03-29 and 2026-10-25, and the weekday mask.
+  - Cell rounding, validators, i18n completeness.
 - **Integration tests** (`@cloudflare/vitest-plugin`, local D1, mocked fetch):
-  - auth;
-  - overlapping drains send exactly one push;
-  - 410 cleanup and 429 retry;
-  - the outage fallback;
-  - a full step returns 409;
+  - auth and invite;
+  - the `MAX_DEVICES` cap;
+  - two overlapping drains send exactly one push;
+  - the retry path reaches `no_data`;
+  - a conflicting route still advances `next_run_at`;
+  - 410 cleanup;
   - `skipped_late`;
-  - adaptive batch;
-  - idle cleanup.
-- **End-to-end (Playwright):** onboarding, the Today screen, switching language, offline mode.
-- **Real devices:** iOS 16.4+ and Android Chrome.
+  - one malformed subscription does not stop the batch;
+  - TTL, urgency and topic headers;
+  - bounded cleanup.
+- **End-to-end (Playwright):** onboarding, the Today screen with mocked Open-Meteo, switching language, offline mode.
+- **Real devices:** iOS 16.4+ install, permission, delivery and deep link; Android Chrome push.
 
-## 8. Rollout (tickets)
-0. **Setup:** scaffold, wrangler config (SPA assets with `run_worker_first` for `/api/*`, D1 binding), lint, typecheck, Vitest, GitHub Actions, preview URL, `/api/health`.
-1. **Core engine and Today screen:** PDOK search, a route stored only on the device, live Open-Meteo data, EN/NL/IT, attribution. It needs no backend, so it can be used in the validation week.
-2. **Installable PWA:** manifest, service worker, offline mode, iOS install guide.
-3. **Device and route API:** D1 schema, auth, rate limit, slot capacity with 409 alternatives, delete-my-data, welcome push.
-4. **Cron drain:** single trigger, claim, weather cache, push, 410 cleanup, DST-aware next run, `meta` table, `skipped_late`, adaptive batch, a CPU measurement to set `BATCH_SIZE`.
-5. **Notification follow-up:** deep link, stored payload, endpoint resync.
-6. **Resilience and privacy:** outage fallback, prefetch, idle cleanup, privacy page.
+## 8. Rollout (tickets, after the phase 3.5 design gate)
+0. **Setup:**
+   - scaffold, wrangler config (SPA assets, `run_worker_first: ["/api/*"]`, D1 binding);
+   - lint, typecheck, Vitest projects, GitHub Actions;
+   - `workers.dev` deploy with a preview URL;
+   - `/api/health`;
+   - VAPID key generation and documentation of the secrets.
+1. **Core engine and Today screen:**
+   - PDOK search, a route stored only on the device, a live Open-Meteo call with the rounded cell;
+   - EN/NL/IT and the attribution;
+   - **the privacy page**, because data goes to PDOK and Open-Meteo from this ticket on.
+2. **Installable PWA:** manifest, service worker, offline last result, the iOS install-first onboarding.
+3. **CPU spike (half a day):** deploy a cron that sends N pushes to your own subscriptions, read CPU per run from Workers Logs, and set `BATCH_SIZE` and the final `MAX_DEVICES`.
+4. **Device and route API:** D1 schema, auth, invite and cap, delete-my-data, the welcome push, the `opens` endpoint.
+5. **Cron drain:** everything in section 4.
+6. **Notification follow-up:** deep link, stored payload with "updated" diff, endpoint resync, open logging from the notification.
 
-## Open questions for the user
-1. Drop KNMI from v1 in favour of retry, then stale cache, then a "no data" push?
-2. To measure the kill criterion, store a pseudonymous "opened on date" row per device and keep it for 30 days?
-3. Custom domain (about €10 a year) or `workers.dev`? The origin is hard to change later: moving it loses installs, push subscriptions and local data.
-4. Accept these Free-plan limits: notify times in 5-minute steps with a cap per step, pushes skipped when more than 15 minutes late, and a global user cap?
+## Deferred (back when `MAX_DEVICES` is raised past ~50)
+- Admission control per 5-minute step with 409 alternatives.
+- Adaptive batch size.
+- Idle-minute weather prefetch.
+- A stale-cache tier.
+- The Rate Limiting binding.
+- A per-device timezone.
+- KNMI fallback: not feasible in a Free Worker, because HARMONIE ships as GRIB/HDF5 files.
 
 ## Unverified
-- The CPU cost of one push, which sets `BATCH_SIZE` and `SLOT_CAP`.
-- Whether the Worker clock stays frozen during pure CPU work.
-- Whether D1 writes made before a CPU kill stay committed.
-- Whether the `CF-Worker` header on workers.dev is per-subdomain, which matters for the Open-Meteo quota slot.
-- Whether PDOK allows CORS.
-- Whether the Rate Limiting binding is available on the Free plan.
-- Apple's push rate limits.
+- CPU cost of one push (ticket 3 measures it).
+- Whether D1 writes still in flight at a CPU kill are committed.
+- Open-Meteo: CORS, whether multi-location requests count per location, and whether shared Cloudflare egress IPs get throttled.
+- PDOK CORS and rate limit.
+- Whether cron invocations count toward the 100k-per-day request quota.
+- iOS notification `tag` replacement.
+- Apple push rate limits.

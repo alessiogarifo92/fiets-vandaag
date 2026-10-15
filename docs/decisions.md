@@ -62,4 +62,20 @@ Researched 2026-10-15 by the `researcher` agent. The official sites were blocked
 - Open-Meteo's live commercial price.
 - Whether Cloudflare's Free plan asks for a card.
 
-## Phase 3 — Architecture (in progress)
+## Phase 3 — Architecture (confirmed 2026-10-15)
+
+The full design is in `docs/architecture.md`. The `architect` agent proposed it and the `critic` agent red-teamed it; the verdict was "accept with changes", and all 7 required fixes were applied. Choices confirmed by the user:
+
+- **Simplified v1.** Up to ~50 invited users (`MAX_DEVICES` plus an invite code), and the timezone is fixed to Europe/Amsterdam. Admission control, the adaptive batch, prefetch and the rate limit are deferred until the cap is raised.
+- **KNMI fallback removed from v1.** This amends phase 2: HARMONIE ships as GRIB/HDF5 files, which cannot be parsed in a Free Worker. When Open-Meteo is down, the cron retries; if that fails, users get a "no weather data" push.
+- **Server data amends phase 1** ("nothing else"). The server stores:
+  - device: language and push subscription;
+  - route: midpoint cell (~1 km) and bearing, but never the start and end points;
+  - schedule: commute window, weekdays and notify time;
+  - delivery log for 14 days, and the pseudonymous `opens` log for 30 days.
+
+  This is pseudonymous personal data under the GDPR. A privacy page ships with ticket 1.
+- **Kill-criterion instrumentation.** The `opens(device, date, source)` log, kept for 30 days.
+- **Origin.** Free `workers.dev`, no custom domain, in line with the zero-billing rule. Moving to a real domain later means testers reinstall the app and re-enable notifications.
+
+## Phase 3.5 — Design UI/UX (next)
