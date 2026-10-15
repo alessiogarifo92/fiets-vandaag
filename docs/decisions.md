@@ -41,6 +41,12 @@ Researched 2026-10-15 by the `researcher` agent. The official sites were blocked
 - **Map:** none in v1. The address search plus a static preview of the direction replace it, which removes the tile dependency and its attribution.
 - **Pro tier:** out of v1. v1 has no subscriptions and no ads, so it stays non-commercial under Open-Meteo's terms. A paid tier would need Open-Meteo's commercial plan (about $29/month; the live price is unverified), so roughly $34/month in total with Workers Paid.
 
+**Zero-billing rule (user requirement, 2026-10-15): nothing may ever be billed.**
+- Use only features of the Workers Free plan. No Workers Paid. No Queues, R2 or any other binding that can bill.
+- When the free limits are hit, the app degrades (pushes are skipped or delayed) instead of upgrading the plan.
+- This replaces "move to Paid at ~40 users" above. Moving to Paid now needs an explicit new decision from the user.
+- The Cloudflare account already uses 2 of its 5 Free cron triggers for other projects (`daily-smile`, `projectamsterdam`). Fiets Vandaag may use at most 3 of them.
+
 **Cost estimates:** about €0/month at 20 users and at 200 users (with batching). About $5/month at 5,000 users, still non-commercial. A domain name is extra if one is wanted.
 
 **Rejected:**
