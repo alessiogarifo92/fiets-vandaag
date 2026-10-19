@@ -16,6 +16,7 @@
     {
       "binding": "DB",
       "database_name": "fiets-vandaag",
+      "database_id": "8d43b4f5-3a09-470f-93e7-75dc00280e93",
       "migrations_dir": "migrations",
     },
   ],
