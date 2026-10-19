@@ -1,4 +1,4 @@
-/* Tokens from DESIGN.md (Polder). Fonts are self-hosted in ticket 1; system fallbacks until then. */
+/* Tokens from DESIGN.md (Polder). Fonts are self-hosted: bundled from @fontsource at build time. */
 :root {
   --mist: #eef2f0;
   --card: #ffffff;
@@ -12,7 +12,11 @@
   --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-ui: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --radius-card: 14px;
+  --radius-input: 10px;
   --radius-pill: 999px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-state: 180ms;
+  --dur-enter: 260ms;
 }
 
 *,
@@ -29,8 +33,96 @@ body {
   color: var(--ink);
   font: 400 16px/1.5 var(--font-ui);
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
   color: var(--polder);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--polder);
+  outline-offset: 2px;
+}
+
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 28px calc(32px + env(safe-area-inset-bottom));
+}
+
+.display {
+  margin: 0;
+  font: 400 40px/1.05 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--reed);
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: var(--radius-card);
+  font: 600 16px/1 var(--font-ui);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 120ms var(--ease-out),
+    background-color var(--dur-state) var(--ease-out),
+    opacity var(--dur-state) var(--ease-out);
+  user-select: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--card);
+  border: 1px solid var(--ink);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

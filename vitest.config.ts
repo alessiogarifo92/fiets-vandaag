@@ -9,7 +9,7 @@ export default defineConfig({
   test: {
     coverage: {
       provider: 'istanbul',
-      include: ['src/core/**/*.ts', 'src/worker/**/*.ts'],
+      include: ['src/core/**/*.ts', 'src/worker/**/*.ts', 'src/app/lib/**/*.ts'],
       exclude: ['**/*.test.ts', '**/*.d.ts'],
       reporter: ['text', 'json-summary', 'html'],
     },
@@ -20,6 +20,15 @@ export default defineConfig({
           name: 'core',
           environment: 'node',
           include: ['src/core/**/*.test.ts'],
+        },
+      },
+      {
+        // App logic outside components (storage, API calls, cache), on Node with fake-indexeddb.
+        extends: true,
+        test: {
+          name: 'app',
+          environment: 'node',
+          include: ['src/app/**/*.test.ts'],
         },
       },
       {

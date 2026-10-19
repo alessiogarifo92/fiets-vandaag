@@ -154,8 +154,8 @@ The VAPID public key is built into the app. The VAPID private key, the invite co
 ## Unverified
 - CPU cost of one push (ticket 3 measures it).
 - Whether D1 writes still in flight at a CPU kill are committed.
-- Open-Meteo: CORS, whether multi-location requests count per location, and whether shared Cloudflare egress IPs get throttled.
-- PDOK CORS and rate limit.
+- Open-Meteo: whether multi-location requests count per location, and whether shared Cloudflare egress IPs get throttled. (CORS verified on 2026-10-19 in ticket 1: `Access-Control-Allow-Origin: *`.)
+- PDOK rate limit. (CORS verified on 2026-10-19 in ticket 1: `Access-Control-Allow-Origin: *`.)
 - Whether cron invocations count toward the 100k-per-day request quota.
 - iOS notification `tag` replacement.
 - Apple push rate limits.
