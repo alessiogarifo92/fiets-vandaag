@@ -71,6 +71,21 @@ jobs:
           cache: npm
       - if: steps.token.outputs.present == 'true'
         run: npm ci && npm run build
+      # A preview version needs an existing Worker. Only when the Worker does not exist yet (404),
+      # the first `wrangler deploy` creates it; production has nothing to overwrite at that point.
+      - name: Create the Worker on first use
+        if: steps.token.outputs.present == 'true'
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/02a4c350badad3fae1cee187b3a0f738/workers/scripts/fiets-vandaag/settings")
+          echo "Worker settings lookup: HTTP $code"
+          if [ "$code" = "404" ]; then
+            echo "::notice::Worker fiets-vandaag not found; creating it with a first deploy."
+            npx wrangler deploy
+          elif [ "$code" != "200" ]; then
+            echo "::error::Cannot read the Worker (HTTP $code); check the CLOUDFLARE_API_TOKEN permissions in README.md."
+            exit 1
+          fi
       - name: Upload preview version
         if: steps.token.outputs.present == 'true'
         run: |
