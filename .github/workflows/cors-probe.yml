@@ -1,0 +1,25 @@
+# Temporary (ticket #2): checks that PDOK and Open-Meteo answer cross-origin browser requests. Removed before merge.
+name: CORS probe
+on:
+  push:
+    branches: [worktree-2-core-engine-today]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        run: |
+          O=https://pr-1-fiets-vandaag.alessiogarifo92.workers.dev
+          probe() {
+            echo "=== $1 $2"
+            curl -sS -X "$1" -D - -o body.txt -H "Origin: $O" -H 'Access-Control-Request-Method: GET' "$2" | grep -iE '^(HTTP/|access-control|content-type)'
+            head -c 700 body.txt; echo
+          }
+          probe GET 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=Damrak%201%20Amsterdam&rows=3&fq=type:adres'
+          probe OPTIONS 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=Damrak'
+          id=$(curl -s 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=Damrak%201%20Amsterdam&rows=1&fq=type:adres' | jq -r '.response.docs[0].id')
+          probe GET "https://api.pdok.nl/bzk/locatieserver/search/v3_1/lookup?id=$id&fl=id,weergavenaam,centroide_ll"
+          probe GET 'https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.89&hourly=precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m&models=knmi_seamless&timezone=Europe%2FAmsterdam&forecast_days=2&wind_speed_unit=kmh'
+          probe OPTIONS 'https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.89'
