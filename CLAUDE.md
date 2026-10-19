@@ -14,8 +14,15 @@ This project relies on the private repo `alessiogarifo92/claude-skills` (skills,
    Claude Code detects agent files added to an existing `~/.claude/agents/` without a restart, but not when that directory did not exist at session start (typical in a fresh container). Then either restart the session once, or use the fallback above for this session. `templates/session-start-hook.sh` can install everything before the session starts (best effort).
 4. If the attach fails, say so in visible text and ask the user how to proceed. Never continue silently without the rules.
 
-Run / preview (manual gate): not decided yet (set in ticket 0, after phase 3).
+Run / preview (manual gate):
+- Local: `npm ci && npm run dev` → http://localhost:5173 (app) and http://localhost:5173/api/health. Port 5173 is the only dev port.
+- Remote session / user check: every PR from this repo gets a Worker preview version from CI, `https://pr-<n>-fiets-vandaag.alessiogarifo92.workers.dev` (link in the "Preview version (PR)" job summary). Production is `https://fiets-vandaag.alessiogarifo92.workers.dev`, deployed by CI on push to `main`.
+- Checks: `npm run lint`, `npm run typecheck`, `npm run test:coverage`, `npm run build`.
 
 Repo visibility: public (check: `gh api repos/alessiogarifo92/fiets-vandaag --jq .private`). Public means standard GitHub-hosted runners have unlimited minutes; a CI job that never starts is not a minutes problem, investigate it.
 
-Needed environment variables / connectors for this project: none yet.
+Needed environment variables / connectors for this project (details in `README.md`):
+- GitHub repository secret `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit, D1: Edit, Account Settings: Read) for the CI preview/deploy jobs.
+- Worker secrets: `VAPID_PRIVATE_KEY`, `INVITE_CODE`; vars `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `MAX_DEVICES` in `wrangler.jsonc`. Rotating VAPID invalidates every subscription.
+- A remote session reaches `api.cloudflare.com` through the proxy-injected token (account `02a4c350badad3fae1cee187b3a0f738`, Workers Free).
+- npm 10 (Node 22) crashes with "Cannot read properties of null (reading 'edgesOut')" when adding packages; add them with `npx -y npm@11 i -D <pkg>`. `npm ci` works with either.

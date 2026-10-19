@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "types": ["svelte", "vite/client"]
+  },
+  "include": ["src/app/**/*.ts", "src/app/**/*.svelte", "src/core/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}
