@@ -20,17 +20,24 @@ export function precipitationOverlap(labelMinute: number, start: number, end: nu
   return to > from ? (to - from) / 60 : 0;
 }
 
-/** Aggregates the rain of one day's hours over [start, end). Null when no hour covers it. */
+/**
+ * Aggregates the rain of one day's hours over [start, end). Null unless hours cover the whole interval: a
+ * missing hour would otherwise read as dry.
+ */
 export function rainOver(hours: readonly HourPoint[], start: number, end: number): RainSummary | null {
   let maxProb = -1;
   let maxRate = 0;
   let mm = 0;
+  let covered = 0;
   for (const h of hours) {
     const overlap = precipitationOverlap(h.minute, start, end);
     if (overlap === 0) continue;
+    covered += overlap * 60;
     maxProb = Math.max(maxProb, h.precipProb);
     maxRate = Math.max(maxRate, h.precipMm);
     mm += h.precipMm * overlap;
   }
-  return maxProb < 0 ? null : { maxProb, mm: Math.round(mm * 100) / 100, maxRate };
+  return maxProb < 0 || covered < end - start - 1e-9
+    ? null
+    : { maxProb, mm: Math.round(mm * 100) / 100, maxRate };
 }

@@ -5,14 +5,7 @@
 </script>
 
 <main class="page">
-  <a
-    class="back"
-    href="#/today"
-    onclick={(e) => {
-      e.preventDefault();
-      history.back();
-    }}>← {tr('nav.back')}</a
-  >
+  <a class="back" href="#/today">← {tr('nav.back')}</a>
   <h1 class="display">{tr('about.title')}</h1>
   <p class="body">{tr('about.body')}</p>
   <p class="meta">{tr('about.version', { version: __APP_VERSION__ })}</p>

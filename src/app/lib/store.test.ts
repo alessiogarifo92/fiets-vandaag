@@ -1,4 +1,4 @@
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBDatabase, IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { _reset, load, remove, save } from './store';
 
@@ -29,6 +29,25 @@ describe('store', () => {
     const proxy = new Proxy(route, {});
     await save('route', proxy);
     expect(await load('route')).toEqual(route);
+  });
+
+  it('rejects a write whose transaction aborts after the request succeeded', async () => {
+    await save('lang', 'en'); // open the database
+    const realTransaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (
+      this: IDBDatabase,
+      ...args: Parameters<IDBDatabase['transaction']>
+    ) {
+      const tx = realTransaction.apply(this, args);
+      tx.objectStore('kv').put('x', 'abort-me').onsuccess = () => tx.abort();
+      return tx;
+    } as IDBDatabase['transaction'];
+    try {
+      await expect(save('lang', 'nl')).rejects.toBeDefined();
+    } finally {
+      IDBDatabase.prototype.transaction = realTransaction;
+    }
+    expect(await load('lang')).toBe('en');
   });
 
   it('removes a value', async () => {

@@ -19,7 +19,7 @@
 
   $effect(() => {
     const g = geometry;
-    const day = commuteDay(new Date(), route.window.end);
+    const day = commuteDay(new Date(), route.window, g.rideMin);
     getForecast(g.cell, g.cellKey)
       .then(({ hours }) => {
         const rec = recommend({
@@ -28,6 +28,7 @@
           window: route.window,
           bearingDeg: g.bearingDeg,
           rideMin: g.rideMin,
+          notBeforeMin: day.notBeforeMin,
         });
         rows = hourRows(hours, day.date, route.window, g.bearingDeg, rec?.departMin ?? null);
       })

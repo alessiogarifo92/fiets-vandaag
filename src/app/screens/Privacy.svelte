@@ -7,14 +7,7 @@
 </script>
 
 <main class="page">
-  <a
-    class="back"
-    href="#/today"
-    onclick={(e) => {
-      e.preventDefault();
-      history.back();
-    }}>← {tr('nav.back')}</a
-  >
+  <a class="back" href="#/today">← {tr('nav.back')}</a>
   <h1 class="display">{tr('privacy.title')}</h1>
   <p class="intro">{tr('privacy.intro')}</p>
   {#each sections as s (s)}

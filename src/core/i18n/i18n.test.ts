@@ -116,6 +116,16 @@ describe('describe', () => {
     );
   });
 
+  it('does not say dry when the rain rate alone flags possible rain', () => {
+    const drizzle = rec({
+      conditions: { maxRainProb: 10, rainMm: 0.1, rainRate: 0.3, speed: 6, head: 6, cross: 0, gust: 9 },
+      reasons: ['rain_possible', 'calm'],
+    });
+    const d = describeRec(drizzle, 'en');
+    expect(d.support).toBe('Light wind 6 km/h · 10% chance of rain');
+    expect(d.sentence).toBe('Leave at 07:50 and pack a rain jacket, just in case.');
+  });
+
   it('describes a crosswind and a light wind', () => {
     const cross = rec({
       conditions: { maxRainProb: 25, rainMm: 0, rainRate: 0, speed: 20, head: 2, cross: 19, gust: 30 },

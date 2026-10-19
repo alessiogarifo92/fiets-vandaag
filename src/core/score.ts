@@ -135,20 +135,31 @@ export interface RecommendInput {
   window: { start: number; end: number };
   bearingDeg: number;
   rideMin: number;
+  /** Departures before this minute of day are already past (today only). */
+  notBeforeMin?: number | null;
 }
 
 /**
  * Scores every departure in the window (every 10 minutes) and picks the best one; ties go to the earliest.
- * - `bike`: leaving at the start of the window is already fine (the best time may still be later).
- * - `shift`: the start of the window is not fine, but a later departure inside it is.
+ * - `bike`: leaving at the first possible time (window start, or now) is already fine; the best may be later.
+ * - `shift`: the first possible time is not fine, but a later departure inside the window is.
  * - `pt`: no departure in the window reaches BIKE_MIN_SCORE.
  */
 export function recommend(input: RecommendInput): Recommendation | null {
   const { window, rideMin, bearingDeg } = input;
   const hours = input.hours.filter((h) => h.date === input.date);
   const lastDepart = Math.max(window.start, window.end - rideMin);
+  // Never suggest a time that has already passed: start at the next 10-minute step after now.
+  const notBefore = input.notBeforeMin ?? window.start;
+  const firstDepart =
+    notBefore <= window.start
+      ? window.start
+      : Math.min(
+          lastDepart,
+          window.start + Math.ceil((notBefore - window.start) / DEPARTURE_STEP_MIN) * DEPARTURE_STEP_MIN,
+        );
   const departures: Departure[] = [];
-  for (let d = window.start; d <= lastDepart; d += DEPARTURE_STEP_MIN) {
+  for (let d = firstDepart; d <= lastDepart; d += DEPARTURE_STEP_MIN) {
     const conditions = rideConditions(hours, d, d + rideMin, bearingDeg);
     if (conditions) departures.push({ departMin: d, score: rideScore(conditions), conditions });
   }

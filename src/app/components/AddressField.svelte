@@ -10,7 +10,15 @@
     label,
     value,
     onpick,
-  }: { id: string; label: string; value: Place | null; onpick: (place: Place) => void } = $props();
+    onclear,
+  }: {
+    id: string;
+    label: string;
+    value: Place | null;
+    onpick: (place: Place) => void;
+    /** Typing after a pick drops the picked place, so a stale one cannot be saved. */
+    onclear: () => void;
+  } = $props();
 
   // The field owns its text after mount; `value` only seeds it.
   let query = $state(untrack(() => value?.label ?? ''));
@@ -20,6 +28,7 @@
   let open = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let ctrl: AbortController | undefined;
+  let pickCtrl: AbortController | undefined;
 
   function search(q: string) {
     clearTimeout(timer);
@@ -47,15 +56,19 @@
   }
 
   async function pick(s: Suggestion) {
+    // Latest pick wins: a slower lookup of an earlier pick must not overwrite it.
+    pickCtrl?.abort();
+    const mine = (pickCtrl = new AbortController());
     open = false;
     query = s.label;
     status = 'searching';
     try {
-      const place = await lookupAddress(s.id);
+      const place = await lookupAddress(s.id, mine.signal);
+      if (mine.signal.aborted) return;
       status = 'idle';
       onpick(place);
     } catch {
-      status = 'error';
+      if (!mine.signal.aborted) status = 'error';
     }
   }
 
@@ -91,7 +104,11 @@
     aria-controls={`${id}-list`}
     aria-activedescendant={active >= 0 ? `${id}-opt-${active}` : undefined}
     bind:value={query}
-    oninput={() => search(query)}
+    oninput={() => {
+      pickCtrl?.abort();
+      onclear();
+      search(query);
+    }}
     {onkeydown}
   />
   {#if open && items.length}

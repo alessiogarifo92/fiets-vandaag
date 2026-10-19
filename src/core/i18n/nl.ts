@@ -28,8 +28,8 @@ export const nl: Messages = {
   'setup.back': 'Terug',
   'setup.save': 'Toon het advies van vandaag',
   'setup.error.tooClose': 'Vertrek en bestemming liggen te dicht bij elkaar.',
-  'setup.error.tooFar': 'Dat is meer dan 60 km: te ver om naar je werk te fietsen.',
-  'setup.error.window': 'Het tijdvak duurt hooguit 3 uur en eindigt na het begin.',
+  'setup.error.tooFar': 'Dat is meer dan {km} km: te ver om naar je werk te fietsen.',
+  'setup.error.window': 'Het tijdvak duurt hooguit {hours} uur en eindigt na het begin.',
   'setup.error.rideTooLong': 'De rit duurt ongeveer {min} min en past niet in dit tijdvak.',
   'setup.privacy':
     'Je adressen blijven op deze telefoon. Voor het weer gebruiken we alleen een gebied van ~1 km.',
@@ -41,6 +41,7 @@ export const nl: Messages = {
   'today.error': 'De weersverwachting is nu niet beschikbaar. Probeer het over een minuut opnieuw.',
   'today.retry': 'Opnieuw',
   'today.forecastAt': 'Verwachting van {time}',
+  'today.stale': 'Vernieuwen lukte niet: verwachting van {date} {time}',
   'today.score': 'Fietsscore {score}/10',
   'today.window': 'Jouw tijdvak {start}–{end}',
   'today.hours': 'Per uur',
@@ -56,7 +57,7 @@ export const nl: Messages = {
   'sentence.shift.rain': 'Vertrek liever om {time}, dan mis je de regen.',
   'sentence.shift.wind': 'Vertrek liever om {time}, dan waait het minder hard.',
   'sentence.pt.rain': 'Neem het openbaar vervoer: het regent je hele tijdvak.',
-  'sentence.pt.wind': 'Neem het openbaar vervoer: de tegenwind is vandaag te sterk.',
+  'sentence.pt.wind': 'Neem het openbaar vervoer: het waait vandaag te hard.',
   'sentence.pt.storm': 'Laat de fiets staan: windstoten tot {gust} km/u.',
   'sentence.pt.mixed': 'Neem het openbaar vervoer: wind en regen samen zitten je tegen.',
 

@@ -59,7 +59,8 @@ function windLine(lang: Lang, c: RideConditions): string {
 function rainLine(lang: Lang, c: RideConditions): string {
   const prob = pct(c.maxRainProb);
   if (c.rainMm >= 0.2) return t(lang, 'rain.amount', { prob, mm: c.rainMm.toFixed(1) });
-  if (prob >= 20) return t(lang, 'rain.chance', { prob });
+  // Same thresholds as the rain reasons, so the line never says "dry" next to a rain-jacket sentence.
+  if (prob >= 20 || c.rainRate >= 0.2) return t(lang, 'rain.chance', { prob });
   return t(lang, 'rain.dry');
 }
 

@@ -5,6 +5,7 @@
   import {
     validateLocalRoute,
     MAX_ROUTE_KM,
+    MAX_WINDOW_MIN,
     MIN_ROUTE_KM,
     type LocalRoute,
     type Place,
@@ -29,7 +30,7 @@
   const toError = $derived.by(() => {
     if (!geometry) return null;
     if (geometry.km < MIN_ROUTE_KM) return tr('setup.error.tooClose');
-    if (geometry.km > MAX_ROUTE_KM) return tr('setup.error.tooFar');
+    if (geometry.km > MAX_ROUTE_KM) return tr('setup.error.tooFar', { km: MAX_ROUTE_KM });
     return null;
   });
 
@@ -39,7 +40,9 @@
     const route = { from, to, window: { start, end } };
     const result = validateLocalRoute(route);
     if (!result.ok)
-      return Object.keys(result.fields).some((k) => k.startsWith('window')) ? tr('setup.error.window') : null;
+      return Object.keys(result.fields).some((k) => k.startsWith('window'))
+        ? tr('setup.error.window', { hours: MAX_WINDOW_MIN / 60 })
+        : null;
     if (geometry && end! - start! < geometry.rideMin)
       return tr('setup.error.rideTooLong', { min: geometry.rideMin });
     return null;
@@ -80,9 +83,21 @@
 
   <section class="card form">
     {#if step === 1}
-      <AddressField id="from" label={tr('setup.from.label')} value={from} onpick={(p) => (from = p)} />
+      <AddressField
+        id="from"
+        label={tr('setup.from.label')}
+        value={from}
+        onpick={(p) => (from = p)}
+        onclear={() => (from = null)}
+      />
     {:else if step === 2}
-      <AddressField id="to" label={tr('setup.to.label')} value={to} onpick={(p) => (to = p)} />
+      <AddressField
+        id="to"
+        label={tr('setup.to.label')}
+        value={to}
+        onpick={(p) => (to = p)}
+        onclear={() => (to = null)}
+      />
       {#if toError}
         <p class="error" role="alert">{toError}</p>
       {:else if geometry}

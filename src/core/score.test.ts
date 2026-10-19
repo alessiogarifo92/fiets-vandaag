@@ -141,6 +141,26 @@ describe('recommend', () => {
     expect(rec?.reasons).toContain('rain_likely');
   });
 
+  it('never suggests a departure that has already passed', () => {
+    // Opened at 08:03 on a calm morning: the first departure is 08:10, not 07:30.
+    const rec = recommend({ ...base, notBeforeMin: 483, hours: day(() => ({ windSpeed: 0 })) });
+    expect(rec?.departMin).toBe(490);
+    expect(rec?.departures[0]?.departMin).toBe(490);
+    expect(rec?.departures.at(-1)?.departMin).toBe(510);
+  });
+
+  it('keeps the last departure that still arrives in time', () => {
+    // 07:30-09:00 with a 25 min ride: last departure 08:35; at 08:32 that is the only one left.
+    const rec = recommend({ ...base, rideMin: 25, notBeforeMin: 512, hours: day(() => ({})) });
+    expect(rec?.departures.map((d) => d.departMin)).toEqual([515]);
+  });
+
+  it('a shift is judged from now, not from the window start', () => {
+    // Early rain until 08:00, but it is already 08:00: the first possible departure is fine, so bike.
+    const hours = day((hh) => (hh === 8 ? { precipProb: 95, precipMm: 3 } : {}));
+    expect(recommend({ ...base, notBeforeMin: 480, hours })?.verdict).toBe('bike');
+  });
+
   it('ignores hours of another day', () => {
     const other = day(() => ({})).map((h) => ({ ...h, date: '2026-10-21' }));
     expect(recommend({ ...base, hours: other })).toBeNull();

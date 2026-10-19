@@ -37,10 +37,20 @@ export function nextDate(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+export interface CommuteDay {
+  date: string;
+  tomorrow: boolean;
+  /** Earliest departure still possible, minutes of day: now for today, null for tomorrow. */
+  notBeforeMin: number | null;
+}
+
 /**
- * The day the Today screen talks about: today until the commute window is over, then tomorrow.
+ * The day the Today screen talks about: today while a departure that still arrives in time is possible
+ * (now ≤ window end − ride), then tomorrow.
  */
-export function commuteDay(now: Date, windowEnd: number): { date: string; tomorrow: boolean } {
+export function commuteDay(now: Date, window: { end: number }, rideMin: number): CommuteDay {
   const { date, minute } = localNow(now);
-  return minute < windowEnd ? { date, tomorrow: false } : { date: nextDate(date), tomorrow: true };
+  return minute <= window.end - rideMin
+    ? { date, tomorrow: false, notBeforeMin: minute }
+    : { date: nextDate(date), tomorrow: true, notBeforeMin: null };
 }

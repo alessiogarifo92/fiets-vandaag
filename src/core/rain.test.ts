@@ -38,6 +38,12 @@ describe('rainOver', () => {
     expect(rainOver(hours, 510, 570)).toEqual({ maxProb: 70, mm: 1, maxRate: 2 });
   });
 
+  it('returns null when an hour is missing, instead of reading it as dry', () => {
+    // 07:30-08:30 needs labels 08:00 and 09:00; drop 09:00.
+    const gap = hours.filter((h) => h.minute !== 540);
+    expect(rainOver(gap, 450, 510)).toBeNull();
+  });
+
   it('returns null when no hour covers the interval', () => {
     expect(rainOver(hours, 12 * 60, 13 * 60)).toBeNull();
   });

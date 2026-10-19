@@ -18,9 +18,11 @@
   type View = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; forecast: ForecastResult };
   let view = $state<View>({ kind: 'loading' });
   let animate = $state(false);
+  // Re-read on every return to the app: an installed PWA can stay alive in the background overnight.
+  let now = $state(new Date());
 
   const geometry = $derived(routeGeometry(route));
-  const day = $derived(commuteDay(new Date(), route.window.end));
+  const day = $derived(commuteDay(now, route.window, geometry.rideMin));
   const rec = $derived(
     view.kind === 'ready'
       ? recommend({
@@ -29,6 +31,7 @@
           window: route.window,
           bearingDeg: geometry.bearingDeg,
           rideMin: geometry.rideMin,
+          notBeforeMin: day.notBeforeMin,
         })
       : null,
   );
@@ -57,6 +60,23 @@
     void geometry.cellKey;
     void refresh();
   });
+
+  $effect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      now = new Date();
+      void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  });
+
+  function fetchedLabel(f: ForecastResult): string {
+    const at = localNow(new Date(f.fetchedAt));
+    const time = formatMinutes(at.minute);
+    if (!f.stale) return tr('today.forecastAt', { time });
+    return tr('today.stale', { date: `${at.date.slice(8, 10)}-${at.date.slice(5, 7)}`, time });
+  }
 </script>
 
 <main class="page">
@@ -78,7 +98,7 @@
     <p class="support">{text.support}</p>
     <p class="meta">
       {tr('today.score', { score: rec.score })} ·
-      {tr('today.forecastAt', { time: formatMinutes(localNow(new Date(view.forecast.fetchedAt)).minute) })}
+      {fetchedLabel(view.forecast)}
     </p>
 
     <Timeline {rows} window={route.window} {animate} />

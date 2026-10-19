@@ -35,10 +35,21 @@ describe('nextDate and commuteDay', () => {
     expect(nextDate('2026-10-31')).toBe('2026-11-01');
   });
 
-  it('talks about today before the window ends, tomorrow after', () => {
-    const morning = new Date('2026-10-20T05:00:00Z'); // 07:00 local
-    expect(commuteDay(morning, 540)).toEqual({ date: '2026-10-20', tomorrow: false });
-    const late = new Date('2026-10-20T08:00:00Z'); // 10:00 local
-    expect(commuteDay(late, 540)).toEqual({ date: '2026-10-21', tomorrow: true });
+  it('talks about today while a departure can still arrive in time, then tomorrow', () => {
+    const window = { end: 540 };
+    // 07:00 local, 25 min ride: today, nothing before 07:00.
+    expect(commuteDay(new Date('2026-10-20T05:00:00Z'), window, 25)).toEqual({
+      date: '2026-10-20',
+      tomorrow: false,
+      notBeforeMin: 420,
+    });
+    // 08:35 is the last departure that arrives by 09:00.
+    expect(commuteDay(new Date('2026-10-20T06:35:00Z'), window, 25).tomorrow).toBe(false);
+    // 08:40 local: too late to arrive by 09:00, so tomorrow.
+    expect(commuteDay(new Date('2026-10-20T06:40:00Z'), window, 25)).toEqual({
+      date: '2026-10-21',
+      tomorrow: true,
+      notBeforeMin: null,
+    });
   });
 });

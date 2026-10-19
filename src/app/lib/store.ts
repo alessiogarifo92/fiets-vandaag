@@ -38,9 +38,12 @@ function run<T>(mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest)
   return open().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const req = op(db.transaction(STORE, mode).objectStore(STORE));
-        req.onsuccess = () => resolve(req.result as T);
-        req.onerror = () => reject(req.error);
+        // Settle on the transaction, not the request: a write is only durable once the transaction commits
+        // (it can still abort after onsuccess, e.g. on a full disk).
+        const tx = db.transaction(STORE, mode);
+        const req = op(tx.objectStore(STORE));
+        tx.oncomplete = () => resolve(req.result as T);
+        tx.onabort = tx.onerror = () => reject(tx.error ?? req.error);
       }),
   );
 }
