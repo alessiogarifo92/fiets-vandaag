@@ -1,0 +1,21 @@
+// T3 spike (#4): throwaway Worker, deleted after the measurement. No static assets, so it deploys from a session.
+// Its own D1 database and its own VAPID pair; production `fiets-vandaag` is never touched.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "fiets-vandaag-spike",
+  "account_id": "02a4c350badad3fae1cee187b3a0f738",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "fiets-vandaag-spike", "database_id": "REPLACE_AFTER_CREATE" },
+  ],
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BFdqK-Ru1S_rRhDPDaAOOqsZlkHUbzTv7k150KZnQMsvx2sQS0k_RtsRY2-1F26cG98AgJQd7I_js3Y_1kqWyeQ",
+    "VAPID_SUBJECT": "https://fiets-vandaag-spike.alessiogarifo92.workers.dev",
+    "ROUNDS": "4",
+  },
+  // The temporary cron is added and removed through the API (PUT .../schedules), not here.
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+}

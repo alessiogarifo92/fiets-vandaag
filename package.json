@@ -19,6 +19,7 @@
     "cf-typegen": "wrangler types --strict-vars=false src/worker/worker-configuration.d.ts"
   },
   "devDependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
     "@cloudflare/vite-plugin": "^1.64.0",
     "@cloudflare/vitest-plugin": "^1.4.3",
     "@eslint/js": "^10.0.1",
