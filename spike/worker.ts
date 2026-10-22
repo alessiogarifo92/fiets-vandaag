@@ -1,11 +1,14 @@
 // T3 spike (#4): CPU cost of a web-push batch on Workers Free. Throwaway, never merged.
 // A temporary cron sends N pushes per run (plan below) to the owner's own subscriptions; CPU per run
 // is read afterwards from Workers Logs ($workers.cpuTimeMs, outcome exceededCpu).
+// Storage is KV (the session token has no D1 access); one key per subscription, so devices never race.
+// The run index comes from the clock (START_MS var), not a stored counter: KV reads can be ~60 s stale.
 import { encryptNotification, vapidHeaders } from '@block65/webcrypto-web-push';
 import type { PushSubscription } from '@block65/webcrypto-web-push';
 
 interface Env {
-  DB: D1Database;
+  KV: KVNamespace;
+  START_MS: string;
   VAPID_PUBLIC_KEY: string;
   VAPID_SUBJECT: string;
   VAPID_PRIVATE_KEY: string;
@@ -14,7 +17,7 @@ interface Env {
 }
 
 // Interleaved so drift over time (cold isolates, push-service latency) spreads over every N.
-// N = 0 is the baseline: the same D1 reads and writes, no push.
+// N = 0 is the baseline: the same KV reads and write, no push.
 const NS = [0, 1, 2, 4, 8];
 const ALLOWED_HOSTS = [
   /^fcm\.googleapis\.com$/,
@@ -22,15 +25,6 @@ const ALLOWED_HOSTS = [
   /^web\.push\.apple\.com$/,
   /\.notify\.windows\.com$/,
 ];
-
-const SCHEMA = [
-  'CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, ua TEXT, created_at INTEGER NOT NULL)',
-  'CREATE TABLE IF NOT EXISTS runs (idx INTEGER PRIMARY KEY, n INTEGER NOT NULL, subs INTEGER NOT NULL, statuses TEXT NOT NULL, at INTEGER NOT NULL)',
-];
-
-async function ensureSchema(db: D1Database) {
-  await db.batch(SCHEMA.map((s) => db.prepare(s)));
-}
 
 type Sub = { endpoint: string; p256dh: string; auth: string };
 
@@ -94,43 +88,42 @@ async function sendBatch(env: Env, subs: Sub[], n: number, label: string): Promi
   return Promise.all(jobs);
 }
 
-async function loadSubs(db: D1Database): Promise<Sub[]> {
-  const { results } = await db
-    .prepare('SELECT endpoint, p256dh, auth FROM subs ORDER BY created_at')
-    .all<Sub>();
-  return results;
+async function subKey(endpoint: string) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
+  return 'sub:' + [...new Uint8Array(h).slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function dropGone(db: D1Database, subs: Sub[], statuses: (number | string)[]) {
+async function loadSubs(kv: KVNamespace): Promise<Sub[]> {
+  const { keys } = await kv.list({ prefix: 'sub:' });
+  const subs = await Promise.all(keys.map((k) => kv.get<Sub & { at: number }>(k.name, 'json')));
+  return subs.filter((x): x is Sub & { at: number } => x !== null).sort((a, b) => a.at - b.at);
+}
+
+async function dropGone(kv: KVNamespace, subs: Sub[], statuses: (number | string)[]) {
   const gone = new Set<string>();
   statuses.forEach((st, i) => {
     if (st === 404 || st === 410) gone.add(subs[i % subs.length].endpoint);
   });
-  return [...gone].map((e) => db.prepare('DELETE FROM subs WHERE endpoint = ?').bind(e));
+  await Promise.all([...gone].map(async (e) => kv.delete(await subKey(e))));
 }
 
-async function scheduled(env: Env) {
-  const db = env.DB;
+async function scheduled(env: Env, scheduledTime: number) {
   const rounds = Number(env.ROUNDS) || 4;
   const plan = Array.from({ length: rounds }, () => NS).flat();
-  const [state, subsRes] = await db.batch([
-    db.prepare('SELECT COUNT(*) AS c FROM runs'),
-    db.prepare('SELECT endpoint, p256dh, auth FROM subs ORDER BY created_at'),
-  ]);
-  const idx = (state.results[0] as { c: number }).c;
-  const subs = subsRes.results as Sub[];
-  if (idx >= plan.length || subs.length === 0) {
+  const start = Number(env.START_MS) || 0;
+  const idx = start > 0 ? Math.round((scheduledTime - start) / 60_000) : -1;
+  const subs = await loadSubs(env.KV);
+  if (idx < 0 || idx >= plan.length || subs.length === 0) {
     console.log(JSON.stringify({ spike: 'idle', idx, subs: subs.length }));
     return;
   }
   const n = plan[idx];
   const statuses = n > 0 ? await sendBatch(env, subs, n, `#${idx}`) : [];
-  await db.batch([
-    db
-      .prepare('INSERT INTO runs (idx, n, subs, statuses, at) VALUES (?, ?, ?, ?, ?)')
-      .bind(idx, n, subs.length, JSON.stringify(statuses), Date.now()),
-    ...(await dropGone(db, subs, statuses)),
-  ]);
+  await env.KV.put(
+    `run:${String(idx).padStart(2, '0')}`,
+    JSON.stringify({ n, subs: subs.length, statuses, at: Date.now() }),
+  );
+  await dropGone(env.KV, subs, statuses);
   console.log(JSON.stringify({ spike: 'run', idx, n, subs: subs.length, statuses }));
 }
 
@@ -194,7 +187,6 @@ async function fetchHandler(req: Request, env: Env): Promise<Response> {
       icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
     });
   }
-  await ensureSchema(env.DB);
   if (url.pathname === '/' && req.method === 'GET')
     return new Response(page(env, key), { headers: { 'content-type': 'text/html; charset=utf-8' } });
   if (url.pathname === '/subscribe' && req.method === 'POST') {
@@ -210,37 +202,36 @@ async function fetchHandler(req: Request, env: Env): Promise<Response> {
     ) {
       return json({ error: 'invalid_subscription', host }, 400);
     }
-    await env.DB.prepare(
-      'INSERT OR REPLACE INTO subs (endpoint, p256dh, auth, ua, created_at) VALUES (?, ?, ?, ?, ?)',
-    )
-      .bind(
-        s.endpoint,
-        s.keys.p256dh,
-        s.keys.auth,
-        (req.headers.get('user-agent') ?? '').slice(0, 120),
-        Date.now(),
-      )
-      .run();
+    await env.KV.put(
+      await subKey(s.endpoint),
+      JSON.stringify({
+        endpoint: s.endpoint,
+        p256dh: s.keys.p256dh,
+        auth: s.keys.auth,
+        ua: (req.headers.get('user-agent') ?? '').slice(0, 120),
+        at: Date.now(),
+      }),
+    );
     return json({ ok: true, host });
   }
   if (url.pathname === '/test' && req.method === 'POST') {
-    const subs = await loadSubs(env.DB);
+    const subs = await loadSubs(env.KV);
     if (subs.length === 0) return json({ error: 'no_subscriptions' }, 409);
     const statuses = await sendBatch(env, subs, subs.length, 'prova');
     console.log(JSON.stringify({ spike: 'test', subs: subs.length, statuses }));
     return json({ subs: subs.length, statuses });
   }
   if (url.pathname === '/status') {
-    const subs = await env.DB.prepare('SELECT substr(endpoint, 1, 40) AS host, ua FROM subs').all();
-    const runs = await env.DB.prepare('SELECT idx, n, statuses FROM runs ORDER BY idx').all();
-    return json({ subs: subs.results, runs: runs.results });
+    const subs = await loadSubs(env.KV);
+    const runs = await env.KV.list({ prefix: 'run:' });
+    return json({ subs: subs.map((x) => new URL(x.endpoint).hostname), runs: runs.keys.map((k) => k.name) });
   }
   return new Response('Not found', { status: 404 });
 }
 
 export default {
   fetch: fetchHandler,
-  async scheduled(_c: ScheduledController, env: Env) {
-    await scheduled(env);
+  async scheduled(c: ScheduledController, env: Env) {
+    await scheduled(env, c.scheduledTime);
   },
 } satisfies ExportedHandler<Env>;
