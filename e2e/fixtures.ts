@@ -45,11 +45,14 @@ export interface Calls {
   meteo: string[];
 }
 
-/** Mocks PDOK and Open-Meteo, records every URL called, and freezes the clock. */
+/**
+ * Mocks PDOK and Open-Meteo, records every URL called, and freezes the clock. Routes sit on the context, not
+ * the page, so they also see requests that pass through the service worker.
+ */
 export async function mockThirdParties(page: Page, body = forecast()): Promise<Calls> {
   const calls: Calls = { pdok: [], meteo: [] };
   await page.clock.setFixedTime(NOW);
-  await page.route('https://api.pdok.nl/**', async (route) => {
+  await page.context().route('https://api.pdok.nl/**', async (route) => {
     const url = new URL(route.request().url());
     calls.pdok.push(url.toString());
     const headers = { 'access-control-allow-origin': '*' };
@@ -67,7 +70,7 @@ export async function mockThirdParties(page: Page, body = forecast()): Promise<C
       headers,
     });
   });
-  await page.route('https://api.open-meteo.com/**', async (route) => {
+  await page.context().route('https://api.open-meteo.com/**', async (route) => {
     calls.meteo.push(route.request().url());
     return route.fulfill({ json: body, headers: { 'access-control-allow-origin': '*' } });
   });

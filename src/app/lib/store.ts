@@ -9,12 +9,21 @@ export interface CachedForecast {
   hours: HourPoint[];
 }
 
+/** The browser's push subscription. Kept on the device only until the device API exists (ticket 4). */
+export interface PushRecord {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
 export interface StoreShape {
   route: LocalRoute;
   lang: Lang;
   forecast: CachedForecast;
   /** Local date on which the timeline bars last animated in (DESIGN.md: once per day). */
   animatedOn: string;
+  push: PushRecord;
+  /** iOS in the browser: the user chose to continue without installing first. */
+  installSkipped: boolean;
 }
 
 const DB_NAME = 'fiets-vandaag';

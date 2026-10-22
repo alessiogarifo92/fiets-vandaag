@@ -41,6 +41,8 @@ export const en = {
   'today.retry': 'Try again',
   'today.forecastAt': 'Forecast of {time}',
   'today.stale': 'Could not refresh: showing the forecast of {date} {time}',
+  'today.offline': 'Offline: showing the forecast of {date} {time}',
+  'today.offlineNone': 'You are offline and there is no saved forecast for this route yet.',
   'today.score': 'Bike score {score}/10',
   'today.window': 'Your window {start}–{end}',
   'today.hours': 'Hour by hour',
@@ -102,6 +104,9 @@ export const en = {
   'privacy.meteo.title': 'Open-Meteo (weather)',
   'privacy.meteo.body':
     'Your phone asks Open-Meteo (api.open-meteo.com) for the forecast of a ~1 km area around the middle of your route, never your addresses. Open-Meteo sees that area and your IP address.',
+  'privacy.push.title': 'Notifications (only if you turn them on)',
+  'privacy.push.body':
+    'Your phone registers with its push service (Apple, Google or Mozilla), which gives it an address for notifications. For now that address stays on this phone.',
   'privacy.server.title': 'Our server',
   'privacy.server.body':
     'Nothing yet: today the app works without our server. When morning notifications arrive, the server will store only your push subscription, the ~1 km area and direction of your route, and your schedule, and this page will say so first.',
@@ -113,6 +118,27 @@ export const en = {
   'about.body':
     'Every morning: bike, public transport, or leave a bit later? Fiets Vandaag reads the wind against your route and the rain in your commute window.',
   'about.version': 'Version {version}',
+
+  'install.meta': 'Before you start',
+  'install.title': 'First, add Fiets Vandaag to your Home Screen.',
+  'install.why':
+    'On iPhone, morning notifications only work in the Home Screen app, and that app keeps its own data, apart from the browser. Set up your route there.',
+  'install.step.share': 'Tap the Share button in the browser bar.',
+  'install.step.add': 'Scroll down and choose “Add to Home Screen”.',
+  'install.step.open': 'Open Fiets Vandaag from your Home Screen.',
+  'install.skip': 'Continue in the browser',
+  'install.oldIos': 'Notifications need iOS 16.4 or later. The daily advice works on this iPhone anyway.',
+  'install.prompt.title': 'Install the app',
+  'install.prompt.body':
+    'Open it from your home screen like any other app. It also shows the last forecast offline.',
+  'install.prompt.button': 'Install',
+
+  'notify.title': 'Morning notification',
+  'notify.body': 'The advice on your lock screen before you leave.',
+  'notify.toggle': 'Morning notification',
+  'notify.on': 'On. Daily notifications start with a coming update.',
+  'notify.denied': 'Notifications are blocked. Allow them for Fiets Vandaag in your phone’s settings.',
+  'notify.error': 'Notifications could not be turned on. Try again.',
 } as const;
 
 export type MessageKey = keyof typeof en;

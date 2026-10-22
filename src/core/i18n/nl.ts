@@ -42,6 +42,8 @@ export const nl: Messages = {
   'today.retry': 'Opnieuw',
   'today.forecastAt': 'Verwachting van {time}',
   'today.stale': 'Vernieuwen lukte niet: verwachting van {date} {time}',
+  'today.offline': 'Offline: verwachting van {date} {time}',
+  'today.offlineNone': 'Je bent offline en er is nog geen bewaarde verwachting voor deze route.',
   'today.score': 'Fietsscore {score}/10',
   'today.window': 'Jouw tijdvak {start}–{end}',
   'today.hours': 'Per uur',
@@ -103,6 +105,9 @@ export const nl: Messages = {
   'privacy.meteo.title': 'Open-Meteo (weer)',
   'privacy.meteo.body':
     'Je telefoon vraagt Open-Meteo (api.open-meteo.com) om de verwachting voor een gebied van ~1 km rond het midden van je route, nooit om je adressen. Open-Meteo ziet dat gebied en je IP-adres.',
+  'privacy.push.title': 'Meldingen (alleen als je ze aanzet)',
+  'privacy.push.body':
+    'Je telefoon meldt zich aan bij zijn pushdienst (Apple, Google of Mozilla), die er een adres voor meldingen aan geeft. Voorlopig blijft dat adres op deze telefoon.',
   'privacy.server.title': 'Onze server',
   'privacy.server.body':
     'Nog niets: de app werkt nu zonder onze server. Zodra er ochtendmeldingen komen, bewaart de server alleen je pushabonnement, het gebied van ~1 km en de richting van je route, en je schema. Deze pagina zegt dat eerst.',
@@ -114,4 +119,27 @@ export const nl: Messages = {
   'about.body':
     'Elke ochtend: fiets, openbaar vervoer of iets later vertrekken? Fiets Vandaag kijkt naar de wind op je route en de regen in je reistijdvak.',
   'about.version': 'Versie {version}',
+
+  'install.meta': 'Voordat je begint',
+  'install.title': 'Zet Fiets Vandaag eerst op je beginscherm.',
+  'install.why':
+    'Op de iPhone werken ochtendmeldingen alleen in de app op je beginscherm, en die app bewaart zijn eigen gegevens, los van de browser. Stel je route daar in.',
+  'install.step.share': 'Tik op de deelknop in de browserbalk.',
+  'install.step.add': 'Scroll omlaag en kies ‘Zet op beginscherm’.',
+  'install.step.open': 'Open Fiets Vandaag vanaf je beginscherm.',
+  'install.skip': 'Verder in de browser',
+  'install.oldIos':
+    'Meldingen hebben iOS 16.4 of nieuwer nodig. Het dagelijkse advies werkt op deze iPhone gewoon.',
+  'install.prompt.title': 'Installeer de app',
+  'install.prompt.body':
+    'Open hem vanaf je beginscherm zoals elke andere app. Offline zie je de laatste verwachting.',
+  'install.prompt.button': 'Installeren',
+
+  'notify.title': 'Ochtendmelding',
+  'notify.body': 'Het advies op je vergrendelscherm voordat je vertrekt.',
+  'notify.toggle': 'Ochtendmelding',
+  'notify.on': 'Aan. Dagelijkse meldingen beginnen met een volgende update.',
+  'notify.denied':
+    'Meldingen zijn geblokkeerd. Sta ze toe voor Fiets Vandaag in de instellingen van je telefoon.',
+  'notify.error': 'Meldingen konden niet worden aangezet. Probeer het opnieuw.',
 };

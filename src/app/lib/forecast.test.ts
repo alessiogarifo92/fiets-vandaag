@@ -1,7 +1,7 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORECAST_MAX_AGE_MS } from './api';
-import { getForecast, STALE_LIMIT_MS } from './forecast';
+import { forecastLabel, getForecast, STALE_LIMIT_MS } from './forecast';
 import { _reset, load, save } from './store';
 
 const body = {
@@ -57,5 +57,36 @@ describe('getForecast', () => {
     await expect(getForecast(cell, KEY, NOW)).rejects.toThrow('offline');
     await save('forecast', { cellKey: KEY, fetchedAt: NOW - STALE_LIMIT_MS, hours });
     await expect(getForecast(cell, KEY, NOW)).rejects.toThrow('offline');
+  });
+});
+
+describe('forecastLabel', () => {
+  // 2026-10-20 07:00 in Amsterdam (CEST).
+  const at = Date.parse('2026-10-20T05:00:00Z');
+
+  it('gives the forecast time when it is current, online or not', () => {
+    const f = { hours, fetchedAt: at, stale: false };
+    const label = { key: 'today.forecastAt', params: { time: '07:00' } };
+    expect(forecastLabel(f, true)).toEqual(label);
+    expect(forecastLabel(f, false)).toEqual(label);
+  });
+
+  it('says the refresh failed when online, and names offline when the network is gone', () => {
+    const f = { hours, fetchedAt: at, stale: true };
+    const params = { date: '20-10', time: '07:00' };
+    expect(forecastLabel(f, true)).toEqual({ key: 'today.stale', params });
+    expect(forecastLabel(f, false)).toEqual({ key: 'today.offline', params });
+  });
+});
+
+describe('getForecast offline', () => {
+  it('shows the last result with its own time when the network is gone', async () => {
+    await save('forecast', { cellKey: KEY, fetchedAt: NOW - FORECAST_MAX_AGE_MS - 1, hours });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    expect(await getForecast(cell, KEY, NOW)).toEqual({
+      hours,
+      fetchedAt: NOW - FORECAST_MAX_AGE_MS - 1,
+      stale: true,
+    });
   });
 });

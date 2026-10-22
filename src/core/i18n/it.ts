@@ -41,6 +41,8 @@ export const it: Messages = {
   'today.retry': 'Riprova',
   'today.forecastAt': 'Previsioni delle {time}',
   'today.stale': 'Aggiornamento non riuscito: previsioni del {date} alle {time}',
+  'today.offline': 'Offline: previsioni del {date} alle {time}',
+  'today.offlineNone': 'Sei offline e non c’è ancora una previsione salvata per questo percorso.',
   'today.score': 'Punteggio bici {score}/10',
   'today.window': 'La tua fascia {start}–{end}',
   'today.hours': 'Ora per ora',
@@ -102,6 +104,9 @@ export const it: Messages = {
   'privacy.meteo.title': 'Open-Meteo (meteo)',
   'privacy.meteo.body':
     'Il telefono chiede a Open-Meteo (api.open-meteo.com) le previsioni per un’area di ~1 km attorno al centro del percorso, mai i tuoi indirizzi. Open-Meteo vede quell’area e il tuo indirizzo IP.',
+  'privacy.push.title': 'Notifiche (solo se le attivi)',
+  'privacy.push.body':
+    'Il telefono si registra presso il suo servizio push (Apple, Google o Mozilla), che gli assegna un indirizzo per le notifiche. Per ora quell’indirizzo resta su questo telefono.',
   'privacy.server.title': 'Il nostro server',
   'privacy.server.body':
     'Ancora niente: oggi l’app funziona senza il nostro server. Quando arriveranno le notifiche del mattino, il server salverà solo la tua iscrizione push, l’area di ~1 km e la direzione del percorso, e i tuoi orari, e questa pagina lo dirà prima.',
@@ -113,4 +118,27 @@ export const it: Messages = {
   'about.body':
     'Ogni mattina: bici, mezzi pubblici o partire un po’ più tardi? Fiets Vandaag legge il vento rispetto al tuo percorso e la pioggia nella tua fascia di viaggio.',
   'about.version': 'Versione {version}',
+
+  'install.meta': 'Prima di iniziare',
+  'install.title': 'Prima aggiungi Fiets Vandaag alla schermata Home.',
+  'install.why':
+    'Su iPhone le notifiche del mattino funzionano solo nell’app sulla schermata Home, e quell’app tiene i suoi dati separati dal browser. Imposta lì il tuo percorso.',
+  'install.step.share': 'Tocca il pulsante Condividi nella barra del browser.',
+  'install.step.add': 'Scorri e scegli “Aggiungi alla schermata Home”.',
+  'install.step.open': 'Apri Fiets Vandaag dalla schermata Home.',
+  'install.skip': 'Continua nel browser',
+  'install.oldIos':
+    'Le notifiche richiedono iOS 16.4 o successivo. Il consiglio quotidiano funziona comunque su questo iPhone.',
+  'install.prompt.title': 'Installa l’app',
+  'install.prompt.body':
+    'Aprila dalla schermata Home come ogni altra app. Offline mostra l’ultima previsione.',
+  'install.prompt.button': 'Installa',
+
+  'notify.title': 'Notifica del mattino',
+  'notify.body': 'Il consiglio sulla schermata di blocco prima di partire.',
+  'notify.toggle': 'Notifica del mattino',
+  'notify.on': 'Attiva. Le notifiche quotidiane partiranno con un prossimo aggiornamento.',
+  'notify.denied':
+    'Le notifiche sono bloccate. Consentile per Fiets Vandaag nelle impostazioni del telefono.',
+  'notify.error': 'Non è stato possibile attivare le notifiche. Riprova.',
 };
