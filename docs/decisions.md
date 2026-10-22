@@ -88,3 +88,22 @@ Three directions are drawn on the same three screens (route setup, Today, hour b
 - **A · Signaal:** dark, the verdict on a road sign, a compass and 3 tiles.
 - **B · Polder:** light, a sentence plus a commute-window timeline.
 - **C · Fietsbel:** playful, a 1-10 score dial, chunky cards.
+
+## Ticket 3 — CPU spike (measured 2026-10-22)
+
+Measured on a throwaway Workers Free Worker, since deleted. 20 cron runs sent N pushes each to the owner's Android subscription (FCM, every push 201), using `@block65/webcrypto-web-push` 2.0.0, `pad: false`, and one VAPID header per origin per run. CPU comes from Cloudflare analytics. Full report: issue #4.
+
+| N pushes | median CPU | max CPU | runs > 10 ms (of 4) |
+|---|---|---|---|
+| 0 | 1.7 ms | 1.9 ms | 0 |
+| 1 | 6.4 ms | 8.2 ms | 0 |
+| 2 | 5.4 ms | 9.0 ms | 0 |
+| 4 | 6.3 ms | 7.2 ms | 0 |
+| 8 | 10.1 ms | 17.0 ms | 2 |
+
+- **`BATCH_SIZE` = 4, `MAX_DEVICES` = 50.** This keeps the 15-minute delivery target of architecture §4.
+- **Cost shape.** The first push of a run costs about 4-6 ms (VAPID signing plus the first key agreement); each further push adds under 1 ms.
+- **CPU limit.** There were no `exceededCpu` events in 22 runs, even at 17 ms, and one outlier of 16 ms on the first cron run. The design still budgets for the documented 10 ms limit and does not rely on that leniency.
+- **If CPU kills appear:** lower `BATCH_SIZE` to 2 through the env var. Never upgrade the plan.
+- **Platform note.** A newly added cron trigger took about 10 minutes before its first invocation.
+- **Still unverified:** Apple (no iOS subscription was measured), and a batch that mixes two push-service origins. Ticket 5 logs CPU per run during its first real mornings.

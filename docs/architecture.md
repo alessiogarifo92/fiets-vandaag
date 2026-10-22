@@ -58,7 +58,7 @@ The UTC hours 02-11 cover 04:00-12:00 in Amsterdam under both CET and CEST. The 
 Overlapping runs must be assumed, and the lease covers them.
 
 Each run:
-1. **Claim.** Take at most `BATCH_SIZE` due routes, a fixed environment value measured in ticket 3. One `batch()` does `UPDATE routes SET lease_until … RETURNING`.
+1. **Claim.** Take at most `BATCH_SIZE` due routes, a fixed environment value: **4**, measured in ticket 3 (`docs/decisions.md`, "Ticket 3"). One `batch()` does `UPDATE routes SET lease_until … RETURNING`.
 2. **Deliveries.** Upsert into `deliveries`. A route proceeds only when its row is new, or is in status `retry` with `attempts < 3`. When a route does not proceed, its `next_run_at` is still advanced to the next weekday, so it never takes a batch slot again.
 3. **Lateness check.** A route more than 15 minutes past `notify_min`, or past the start of its commute window, gets `skipped_late` and no push.
 4. **Weather.** Read the cache. Cells older than 50 minutes are fetched in **one** multi-location Open-Meteo request with `AbortSignal.timeout`. The variables, `models=` and cell coordinates match exactly what the app requests. If Open-Meteo fails:
@@ -75,7 +75,7 @@ Budget per run: at most 1 + `BATCH_SIZE` external subrequests and at most about 
 
 **Cleanup:** when nothing is due, the run executes one bounded retention delete (`LIMIT 50` per table), at most once an hour, keyed on the latest cleanup time stored in `weather_cache` under the special cell `_meta`.
 
-**Throughput:** with 50 users and a measured `BATCH_SIZE` of at least 2, everyone due at 07:00 gets their push within 15 minutes. If the measured value is 1, `MAX_DEVICES` is lowered until that still holds.
+**Throughput:** `BATCH_SIZE` is 4 and `MAX_DEVICES` stays 50 (measured in ticket 3). One run a minute sends 4 pushes, so 50 routes due at 07:00 all get their push within 13 minutes. If Workers Logs ever show `exceededCpu`, `BATCH_SIZE` drops to 2 through the env var (25 minutes for 50 routes, so `MAX_DEVICES` would then need lowering to 30).
 
 **CPU kills** are read from Workers Logs (`exceededCpu`). They are not inferred from stale rows.
 
@@ -152,7 +152,7 @@ The VAPID public key is built into the app. The VAPID private key, the invite co
 - KNMI fallback: not feasible in a Free Worker, because HARMONIE ships as GRIB/HDF5 files.
 
 ## Unverified
-- CPU cost of one push (ticket 3 measures it).
+- CPU per run with two push-service origins (FCM + Apple) in the same batch: ticket 3 measured FCM only.
 - Whether D1 writes still in flight at a CPU kill are committed.
 - Open-Meteo: whether multi-location requests count per location, and whether shared Cloudflare egress IPs get throttled. (CORS verified on 2026-10-19 in ticket 1: `Access-Control-Allow-Origin: *`.)
 - PDOK rate limit. (CORS verified on 2026-10-19 in ticket 1: `Access-Control-Allow-Origin: *`.)
