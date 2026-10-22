@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
+import { serviceWorker } from './tools/sw-plugin.ts';
 
 export function appVersion(): string {
   const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
@@ -18,7 +19,7 @@ export function appVersion(): string {
 }
 
 export default defineConfig({
-  plugins: [svelte(), cloudflare()],
+  plugins: [svelte(), cloudflare(), serviceWorker()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion()),
   },

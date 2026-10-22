@@ -9,6 +9,7 @@
   },
   "include": [
     "vite.config.ts",
+    "tools/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js",
     "svelte.config.js",

@@ -1,0 +1,7 @@
+# Cloudflare static-asset headers (docs/architecture.md §6). The service worker and the manifest are
+# revalidated on every request, so a deploy reaches installed apps on their next open.
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+/manifest.webmanifest
+  Cache-Control: no-cache

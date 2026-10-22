@@ -7,6 +7,7 @@ describe('parseHash', () => {
     ['#/setup', 'setup'],
     ['#hours', 'hours'],
     ['#/privacy', 'privacy'],
+    ['#/install', 'install'],
     ['', null],
     ['#/nope', null],
   ])('%s → %s', (hash, route) => expect(parseHash(hash)).toBe(route));

@@ -3,7 +3,7 @@
   import Footer from '../components/Footer.svelte';
   import { tr } from '../lib/i18n.svelte';
 
-  const sections = ['phone', 'pdok', 'meteo', 'server', 'delete'] as const;
+  const sections = ['phone', 'pdok', 'meteo', 'push', 'server', 'delete'] as const;
 </script>
 
 <main class="page">

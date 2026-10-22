@@ -7,8 +7,10 @@
   import type { LocalRoute } from '../../core/validate';
   import Attribution from '../components/Attribution.svelte';
   import Footer from '../components/Footer.svelte';
+  import InstallCard from '../components/InstallCard.svelte';
+  import NotifyToggle from '../components/NotifyToggle.svelte';
   import Timeline from '../components/Timeline.svelte';
-  import { getForecast, type ForecastResult } from '../lib/forecast';
+  import { forecastLabel, getForecast, type ForecastResult } from '../lib/forecast';
   import { locale, tr } from '../lib/i18n.svelte';
   import { go } from '../lib/router.svelte';
   import { load, save } from '../lib/store';
@@ -20,6 +22,7 @@
   let animate = $state(false);
   // Re-read on every return to the app: an installed PWA can stay alive in the background overnight.
   let now = $state(new Date());
+  let online = $state(navigator.onLine);
 
   const geometry = $derived(routeGeometry(route));
   const day = $derived(commuteDay(now, route.window, geometry.rideMin));
@@ -71,11 +74,23 @@
     return () => document.removeEventListener('visibilitychange', onVisible);
   });
 
+  $effect(() => {
+    const onOnline = () => {
+      online = true;
+      void refresh();
+    };
+    const onOffline = () => (online = false);
+    addEventListener('online', onOnline);
+    addEventListener('offline', onOffline);
+    return () => {
+      removeEventListener('online', onOnline);
+      removeEventListener('offline', onOffline);
+    };
+  });
+
   function fetchedLabel(f: ForecastResult): string {
-    const at = localNow(new Date(f.fetchedAt));
-    const time = formatMinutes(at.minute);
-    if (!f.stale) return tr('today.forecastAt', { time });
-    return tr('today.stale', { date: `${at.date.slice(8, 10)}-${at.date.slice(5, 7)}`, time });
+    const { key, params } = forecastLabel(f, online);
+    return tr(key, params);
   }
 </script>
 
@@ -89,7 +104,7 @@
     <p class="status" aria-live="polite">{tr('today.loading')}</p>
   {:else if view.kind === 'error' || !rec || !text}
     <div class="status" role="alert">
-      <p>{tr('today.error')}</p>
+      <p>{tr(online ? 'today.error' : 'today.offlineNone')}</p>
       <button type="button" class="btn btn-secondary" onclick={refresh}>{tr('today.retry')}</button>
     </div>
   {:else}
@@ -109,6 +124,9 @@
         >{tr('nav.editRoute')}</button
       >
     </div>
+
+    <NotifyToggle />
+    <InstallCard />
 
     <Attribution />
   {/if}

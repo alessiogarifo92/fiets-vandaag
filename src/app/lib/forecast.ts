@@ -1,6 +1,8 @@
 // Forecast for the route's cell: the on-device cache first, then Open-Meteo.
 
 import type { HourPoint } from '../../core/forecast';
+import type { MessageKey, Params } from '../../core/i18n';
+import { formatMinutes, localNow } from '../../core/time';
 import type { LatLon } from '../../core/geo';
 import { fetchForecast, isFresh } from './api';
 import { load, save } from './store';
@@ -28,4 +30,16 @@ export async function getForecast(cell: LatLon, cellKey: string, now = Date.now(
       return { hours: cached.hours, fetchedAt: cached.fetchedAt, stale: true };
     throw err;
   }
+}
+
+/**
+ * The line under the verdict: the forecast time, and when an older forecast stands in, why. Offline is
+ * named as such, so the user knows a refresh will come once the network is back.
+ */
+export function forecastLabel(f: ForecastResult, online: boolean): { key: MessageKey; params: Params } {
+  const at = localNow(new Date(f.fetchedAt));
+  const time = formatMinutes(at.minute);
+  if (!f.stale) return { key: 'today.forecastAt', params: { time } };
+  const date = `${at.date.slice(8, 10)}-${at.date.slice(5, 7)}`;
+  return { key: online ? 'today.stale' : 'today.offline', params: { date, time } };
 }

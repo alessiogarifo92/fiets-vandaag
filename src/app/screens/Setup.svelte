@@ -12,6 +12,7 @@
   } from '../../core/validate';
   import AddressField from '../components/AddressField.svelte';
   import Footer from '../components/Footer.svelte';
+  import InstallCard from '../components/InstallCard.svelte';
   import { tr } from '../lib/i18n.svelte';
 
   let { initial, onsave }: { initial: LocalRoute | null; onsave: (route: LocalRoute) => void } = $props();
@@ -143,6 +144,8 @@
   <p class="privacy">
     {tr('setup.privacy')} <a href="#/privacy">{tr('setup.privacy.link')}</a>
   </p>
+
+  <InstallCard />
 
   <Footer />
 </main>

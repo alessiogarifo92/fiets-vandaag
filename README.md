@@ -25,6 +25,14 @@ npm run dev                      # app + Worker (local D1) on http://localhost:5
 
 Layout: `src/core` is pure TypeScript (its tsconfig has no DOM or Workers types), `src/app` is the Svelte PWA, `src/worker` the Worker, `migrations/` the D1 schema.
 
+## Installable PWA
+
+- `public/manifest.webmanifest` (id/scope `/`, standalone) with icons in `public/icons/` (192, 512, maskable 512, `apple-touch-icon` 180).
+- `src/app/sw.ts` is built to `/sw.js` by `tools/sw-plugin.ts`, which injects the list of built files: the app shell is precached, page loads are network first with the cached shell offline, built files are cache first. The cache name is a hash of the build, so each deploy replaces it; the page reloads once when a new worker takes over. `/api/*`, PDOK and Open-Meteo are never intercepted.
+- `public/_headers` serves `/sw.js` and the manifest with `Cache-Control: no-cache`.
+- iOS in the browser starts onboarding with the "Add to Home Screen" steps (`#/install`), because the installed app has its own storage and is the only place web push works. The notification toggle appears only where push works (on iOS: installed, 16.4+) and asks permission only on a tap; the subscription stays on the device until the device API (ticket 4).
+- Playwright checks installability through Chrome's `Page.getInstallabilityErrors` (the check Lighthouse's PWA audit used) and offline mode; installing, standalone mode and push delivery need a real Android phone and iPhone.
+
 ## Deploy
 
 Origin: `https://fiets-vandaag.alessiogarifo92.workers.dev` (Workers Free, no custom domain).
