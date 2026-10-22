@@ -12,7 +12,7 @@ export default tseslint.config(
   ...svelte.configs.prettier,
   {
     files: ['src/app/**/*.{ts,svelte}'],
-    languageOptions: { globals: globals.browser },
+    languageOptions: { globals: { ...globals.browser, __APP_VERSION__: 'readonly' } },
   },
   {
     files: ['**/*.svelte', '**/*.svelte.ts'],

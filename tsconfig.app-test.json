@@ -1,0 +1,10 @@
+{
+  // The app's unit tests: the app's DOM types plus Node's, which only the tests may use.
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app-test.tsbuildinfo",
+    "types": ["svelte", "vite/client", "node"]
+  },
+  "include": ["src/app/**/*.ts", "src/core/**/*.ts"],
+  "exclude": ["src/core/**/*.test.ts"]
+}

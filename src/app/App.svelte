@@ -1,97 +1,51 @@
 <script lang="ts">
-  import { isHealthResponse, type HealthResponse } from '../core/api';
+  import { isLang, validateLocalRoute, type LocalRoute } from '../core/validate';
+  import { locale } from './lib/i18n.svelte';
+  import { go, nav } from './lib/router.svelte';
+  import { load, save } from './lib/store';
+  import About from './screens/About.svelte';
+  import Hours from './screens/Hours.svelte';
+  import Privacy from './screens/Privacy.svelte';
+  import Setup from './screens/Setup.svelte';
+  import Today from './screens/Today.svelte';
 
-  type Status = { kind: 'loading' } | { kind: 'ok'; health: HealthResponse } | { kind: 'down' };
-
-  let status: Status = $state({ kind: 'loading' });
+  let ready = $state(false);
+  let route: LocalRoute | null = $state(null);
 
   $effect(() => {
-    fetch('/api/health', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: unknown) => {
-        status = isHealthResponse(body) ? { kind: 'ok', health: body } : { kind: 'down' };
-      })
-      .catch(() => {
-        status = { kind: 'down' };
-      });
+    void Promise.all([load('lang'), load('route')]).then(([lang, stored]) => {
+      if (isLang(lang)) locale.lang = lang;
+      const checked = validateLocalRoute(stored);
+      route = checked.ok ? checked.value : null;
+      if (!nav.route || (!route && (nav.route === 'today' || nav.route === 'hours')))
+        go(route ? 'today' : 'setup');
+      ready = true;
+    });
   });
+
+  $effect(() => {
+    document.documentElement.lang = locale.lang;
+  });
+
+  async function onsave(next: LocalRoute) {
+    route = next;
+    await save('route', next).catch(() => {});
+    go('today');
+  }
 </script>
 
-<main>
-  <span class="pill">Fiets Vandaag</span>
-  <h1>Bike or train today? <em>Soon</em> you'll know before breakfast.</h1>
-  <p class="lede">This is the empty skeleton. The morning recommendation arrives with the next tickets.</p>
-
-  <section class="card" aria-live="polite">
-    <span class="label">API</span>
-    {#if status.kind === 'loading'}
-      <span class="value">checking…</span>
-    {:else if status.kind === 'ok'}
-      <span class="value ok">online · <code>{status.health.version}</code></span>
-    {:else}
-      <span class="value down">unreachable</span>
-    {/if}
-  </section>
-</main>
-
-<style>
-  main {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 48px 28px calc(48px + env(safe-area-inset-bottom));
-  }
-
-  .pill {
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: var(--radius-pill);
-    background: var(--ink);
-    color: var(--card);
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  h1 {
-    margin: 20px 0 12px;
-    font: 400 40px/1.05 var(--font-display);
-  }
-
-  h1 em {
-    color: var(--polder);
-  }
-
-  .lede {
-    margin: 0 0 32px;
-    color: var(--reed);
-  }
-
-  .card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    min-height: 54px;
-    padding: 12px 20px;
-    border-radius: var(--radius-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-
-  .label {
-    font-size: 13px;
-    color: var(--reed);
-  }
-
-  .value {
-    font-size: 14px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ok {
-    color: var(--polder);
-  }
-
-  .down {
-    color: var(--ink);
-    font-weight: 600;
-  }
-</style>
+{#if ready}
+  {#if nav.route === 'privacy'}
+    <Privacy />
+  {:else if nav.route === 'about'}
+    <About />
+  {:else if nav.route === 'hours' && route}
+    <Hours {route} />
+  {:else if nav.route === 'today' && route}
+    {#key route}
+      <Today {route} />
+    {/key}
+  {:else}
+    <Setup initial={route} {onsave} />
+  {/if}
+{/if}

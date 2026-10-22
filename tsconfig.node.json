@@ -1,5 +1,5 @@
 {
-  // Build and test tooling, plus the core unit tests that run on Node.
+  // Build and test tooling, the core unit tests that run on Node, and the Playwright tests.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
@@ -12,6 +12,8 @@
     "vitest.config.ts",
     "eslint.config.js",
     "svelte.config.js",
-    "src/core/**/*.test.ts"
+    "src/core/**/*.test.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts"
   ]
 }

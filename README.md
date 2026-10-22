@@ -19,7 +19,8 @@ npm run dev                      # app + Worker (local D1) on http://localhost:5
 | `npm run preview` | Build, then serve the production build locally |
 | `npm run lint` | ESLint + Prettier check (`npm run format` fixes formatting) |
 | `npm run typecheck` | `tsc -b` over the per-folder tsconfigs + `svelte-check` |
-| `npm test` / `npm run test:coverage` | Vitest: project `core` on Node, project `worker` in workerd (`@cloudflare/vitest-plugin`) |
+| `npm test` / `npm run test:coverage` | Vitest: project `core` and `app` (storage, API calls, cache, token contrast) on Node, project `worker` in workerd (`@cloudflare/vitest-plugin`) |
+| `npm run test:e2e` | Playwright on the production build (`vite preview` on port 5173), PDOK and Open-Meteo mocked; includes an axe colour-contrast check per screen |
 | `npm run cf-typegen` | Regenerates `src/worker/worker-configuration.d.ts` after a `wrangler.jsonc` change |
 
 Layout: `src/core` is pure TypeScript (its tsconfig has no DOM or Workers types), `src/app` is the Svelte PWA, `src/worker` the Worker, `migrations/` the D1 schema.
@@ -29,7 +30,7 @@ Layout: `src/core` is pure TypeScript (its tsconfig has no DOM or Workers types)
 Origin: `https://fiets-vandaag.alessiogarifo92.workers.dev` (Workers Free, no custom domain).
 
 GitHub Actions (`.github/workflows/ci.yml`):
-- every push and PR: lint, typecheck, unit tests with coverage (summary in the job, HTML report as the `coverage` artifact), build;
+- every push and PR: lint, typecheck, unit tests with coverage (summary in the job, HTML report as the `coverage` artifact), build, Playwright end-to-end tests (report as the `playwright-report` artifact on failure);
 - every PR from this repo: `wrangler versions upload --preview-alias pr-<n>`, so the PR gets `https://pr-<n>-fiets-vandaag.alessiogarifo92.workers.dev` without touching production (the URL is in the job summary);
 - push to `main`: D1 migrations, `wrangler deploy`, then a smoke test that `/api/health` reports the new commit.
 
@@ -62,6 +63,13 @@ Generate a pair:
 ```bash
 node -e 'const s=crypto.subtle;s.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign"]).then(async k=>console.log("public ",Buffer.from(await s.exportKey("raw",k.publicKey)).toString("base64url"),"\nprivate",(await s.exportKey("jwk",k.privateKey)).d))'
 ```
+
+## Third parties called from the browser
+
+- **PDOK Locatieserver** (`api.pdok.nl`, `suggest` + `lookup`): receives the typed address text.
+- **Open-Meteo** (`api.open-meteo.com`, model `knmi_seamless`): receives the route midpoint rounded to a ~1 km cell (`src/core/geo.ts`).
+
+Both answer `Access-Control-Allow-Origin: *` (checked from a GitHub runner on 2026-10-19), so no proxy is needed. The privacy page (`#/privacy`) lists what each one receives.
 
 ## Weather data
 
