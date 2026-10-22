@@ -6,7 +6,7 @@ import { isLang, validateDevicePatch, validateRegistration, weekdaysFromMask } f
 import { authenticate, newDeviceId, newSecret, safeEqual, sha256Hex, type DeviceRow } from '../auth';
 import { readJson } from '../body';
 import { errorResponse, invalidBody, json } from '../http';
-import { sendPush } from '../push';
+import { InvalidSubscriptionError, sendPush } from '../push';
 import type { RouteContext } from '../router';
 
 export const DEFAULT_MAX_DEVICES = 50;
@@ -14,6 +14,17 @@ export const DEFAULT_MAX_DEVICES = 50;
 export function maxDevices(value: string | undefined): number {
   const n = Number(value);
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_MAX_DEVICES;
+}
+
+/** Push-service answers that mean the subscription itself is invalid or gone (not our VAPID setup). */
+export const REJECTED_SUBSCRIPTION = [400, 404, 410];
+
+function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Error && /UNIQUE/i.test(err.message);
+}
+
+function endpointTaken(): Response {
+  return errorResponse(409, ERROR_CODES.endpointTaken, 'This push subscription belongs to another device');
 }
 
 export function unauthorized(): Response {
@@ -39,42 +50,53 @@ export async function handleRegister(request: Request, ctx: RouteContext): Promi
   const secret = newSecret();
   const secretHash = await sha256Hex(secret);
   const now = ctx.now();
-  // One transaction: a re-registration from the same browser (lost secret, reinstall) replaces its old device
-  // and data, then the insert happens only while the cap has room, so two racing registrations cannot pass it.
+  // One transaction: a re-registration from the same browser (lost secret, reinstall: same endpoint and keys)
+  // replaces its old device and data, then the insert happens only while the cap has room, so two racing
+  // registrations cannot pass it. The same endpoint with other keys is someone else's: the insert's UNIQUE
+  // constraint refuses it (409) and the whole batch rolls back.
   const db = ctx.env.DB;
-  const previous = 'SELECT id FROM devices WHERE push_endpoint = ?';
-  const results = await db.batch([
-    db
-      .prepare(
-        `DELETE FROM deliveries WHERE route_id IN (SELECT id FROM routes WHERE device_id IN (${previous}))`,
-      )
-      .bind(push.endpoint),
-    db.prepare(`DELETE FROM routes WHERE device_id IN (${previous})`).bind(push.endpoint),
-    db.prepare(`DELETE FROM opens WHERE device_id IN (${previous})`).bind(push.endpoint),
-    db.prepare('DELETE FROM devices WHERE push_endpoint = ?').bind(push.endpoint),
-    db
-      .prepare(
-        `INSERT INTO devices (id, secret_hash, lang, push_endpoint, p256dh, auth, created_at, last_seen_at)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM devices) < ?`,
-      )
-      .bind(
-        id,
-        secretHash,
-        lang,
-        push.endpoint,
-        push.keys.p256dh,
-        push.keys.auth,
-        now,
-        now,
-        maxDevices(ctx.env.MAX_DEVICES),
-      ),
-  ]);
+  const previous = 'SELECT id FROM devices WHERE push_endpoint = ? AND p256dh = ? AND auth = ?';
+  const prev = [push.endpoint, push.keys.p256dh, push.keys.auth];
+  let results: D1Result[];
+  try {
+    results = await db.batch([
+      db
+        .prepare(
+          `DELETE FROM deliveries WHERE route_id IN (SELECT id FROM routes WHERE device_id IN (${previous}))`,
+        )
+        .bind(...prev),
+      db.prepare(`DELETE FROM routes WHERE device_id IN (${previous})`).bind(...prev),
+      db.prepare(`DELETE FROM opens WHERE device_id IN (${previous})`).bind(...prev),
+      db.prepare(`DELETE FROM devices WHERE id IN (${previous})`).bind(...prev),
+      db
+        .prepare(
+          `INSERT INTO devices (id, secret_hash, lang, push_endpoint, p256dh, auth, created_at, last_seen_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM devices) < ?`,
+        )
+        .bind(
+          id,
+          secretHash,
+          lang,
+          push.endpoint,
+          push.keys.p256dh,
+          push.keys.auth,
+          now,
+          now,
+          maxDevices(ctx.env.MAX_DEVICES),
+        ),
+    ]);
+  } catch (err) {
+    if (isUniqueViolation(err)) return endpointTaken();
+    throw err;
+  }
   const inserted = results[results.length - 1];
   if (!inserted || inserted.meta.changes === 0)
     return errorResponse(503, ERROR_CODES.capacity, 'Fiets Vandaag is full for now');
 
   // The welcome push is a UX check (the user sees notifications work), not an abuse barrier. It runs after
-  // the response; only its status is logged, never the endpoint.
+  // the response; only its status is logged, never the endpoint. A subscription the push service rejects as
+  // malformed or unknown, or keys that cannot be encrypted to, mean a fake registration: it is removed, so
+  // invented subscriptions cannot hold the MAX_DEVICES slots.
   ctx.waitUntil(
     sendPush(
       ctx.env,
@@ -82,8 +104,16 @@ export async function handleRegister(request: Request, ctx: RouteContext): Promi
       { title: t(lang, 'push.welcome.title'), body: t(lang, 'push.welcome.body'), url: '/#/today' },
       { ttl: 3600, urgency: 'normal', topic: 'welcome' },
     ).then(
-      (status) => console.log('welcome push', status ?? 'skipped'),
-      (err: unknown) => console.error('welcome push failed', err instanceof Error ? err.name : typeof err),
+      async (status) => {
+        console.log('welcome push', status ?? 'skipped');
+        if (status !== null && REJECTED_SUBSCRIPTION.includes(status))
+          await db.batch(deleteDeviceStatements(db, id));
+      },
+      async (err: unknown) => {
+        console.error('welcome push failed', err instanceof Error ? err.name : typeof err);
+        // A network error or timeout keeps the device; keys that cannot be encrypted to do not.
+        if (err instanceof InvalidSubscriptionError) await db.batch(deleteDeviceStatements(db, id));
+      },
     ),
   );
 

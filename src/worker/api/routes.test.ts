@@ -52,6 +52,16 @@ describe('PUT /api/routes/:slot', () => {
     expect(row).toEqual({ notify_min: null, weekdays: 0b1100000, next_run_at: null, lease_until: null });
   });
 
+  it('writes nothing for an identical PUT, so the schedule survives', async () => {
+    const dev = await register();
+    await callJson('/api/routes/1', 'PUT', validRoute, dev.token);
+    await env.DB.prepare('UPDATE routes SET next_run_at = 123').run();
+    const res = await callJson('/api/routes/1', 'PUT', validRoute, dev.token);
+    expect(res.status).toBe(200);
+    const row = await env.DB.prepare('SELECT next_run_at FROM routes').first();
+    expect(row).toEqual({ next_run_at: 123 });
+  });
+
   it('keeps slots 1 and 2 apart', async () => {
     const dev = await register();
     await callJson('/api/routes/1', 'PUT', validRoute, dev.token);

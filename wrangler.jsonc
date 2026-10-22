@@ -27,7 +27,12 @@
     "MAX_DEVICES": "50",
   },
   // Workers Free only: no cron yet (ticket 5 adds the single one), no other bindings.
+  // Invocation logs record every request's IP (cf-connecting-ip) and city coordinates (cf.latitude/longitude),
+  // which architecture §3 forbids. Only the app's own console logs (status codes, error types) are kept.
   "observability": {
     "enabled": true,
+    "logs": {
+      "invocation_logs": false,
+    },
   },
 }

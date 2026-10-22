@@ -102,6 +102,16 @@ describe('POST /api/devices', () => {
     expect((await call('/api/devices/me', { token: again.token })).status).toBe(200);
   });
 
+  it('refuses the same endpoint with other keys (409) and leaves its device alone', async () => {
+    const victim = await register();
+    const forged = { ...(await makeSub()), endpoint: victim.sub.endpoint };
+    const res = await callJson('/api/devices', 'POST', { invite: 'test-invite', lang: 'en', push: forged });
+    expect(res.status).toBe(409);
+    expect((await errorOf(res)).code).toBe('endpoint_taken');
+    expect((await call('/api/devices/me', { token: victim.token })).status).toBe(200);
+    expect(await count('devices')).toBe(1);
+  });
+
   it.each([
     ['another host', 'https://evil.example/push'],
     ['plain http', 'http://fcm.googleapis.com/fcm/send/x'],
@@ -214,6 +224,52 @@ describe('POST /api/devices', () => {
     await Promise.all(pending);
     expect(err).toHaveBeenCalledWith('welcome push failed', 'TypeError');
     expect(await count('devices')).toBe(1);
+  });
+
+  async function registerWithWelcome(
+    answer: () => Promise<Response>,
+    sub?: Awaited<ReturnType<typeof makeSub>>,
+  ) {
+    const vapid = await makeVapid();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(answer);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { ctx, pending } = directCtx({
+      VAPID_PUBLIC_KEY: vapid.publicKey,
+      VAPID_PRIVATE_KEY: vapid.privateKey,
+    });
+    const req = new Request('https://x/api/devices', {
+      method: 'POST',
+      body: JSON.stringify({ invite: 'test-invite', lang: 'en', push: sub ?? (await makeSub()) }),
+    });
+    expect((await handleRegister(req, ctx)).status).toBe(201);
+    await Promise.all(pending);
+  }
+
+  it.each([400, 404, 410])(
+    'removes a registration whose welcome push gets %d (fake subscription)',
+    async (status) => {
+      await registerWithWelcome(async () => new Response(null, { status }));
+      expect(await count('devices')).toBe(0);
+    },
+  );
+
+  it.each([401, 403, 429, 500])('keeps the registration when the welcome push gets %d', async (status) => {
+    await registerWithWelcome(async () => new Response(null, { status }));
+    expect(await count('devices')).toBe(1);
+  });
+
+  it('removes a registration whose keys cannot be encrypted to, without sending anything', async () => {
+    const sub = await makeSub();
+    sub.keys.p256dh = 'B' + 'A'.repeat(86); // right format, not a point on the curve
+    await registerWithWelcome(async () => new Response(null, { status: 201 }), sub);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(await count('devices')).toBe(0);
+  });
+
+  it('never follows a redirect from the push service', async () => {
+    await registerWithWelcome(async () => new Response(null, { status: 201 }));
+    expect(vi.mocked(globalThis.fetch).mock.calls[0]![1]).toMatchObject({ redirect: 'manual' });
   });
 
   it('skips the welcome push without a VAPID private key', async () => {

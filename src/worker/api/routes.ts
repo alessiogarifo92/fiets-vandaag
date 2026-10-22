@@ -36,7 +36,12 @@ export async function handlePutRoute(
        cell = excluded.cell, bearing_deg = excluded.bearing_deg,
        window_start_min = excluded.window_start_min, window_end_min = excluded.window_end_min,
        weekdays = excluded.weekdays, notify_min = excluded.notify_min,
-       next_run_at = NULL, lease_until = NULL, updated_at = excluded.updated_at`,
+       next_run_at = NULL, lease_until = NULL, updated_at = excluded.updated_at
+     -- An identical PUT writes nothing, so repeating it cannot burn the D1 daily write quota.
+     WHERE routes.cell IS NOT excluded.cell OR routes.bearing_deg IS NOT excluded.bearing_deg
+        OR routes.window_start_min IS NOT excluded.window_start_min
+        OR routes.window_end_min IS NOT excluded.window_end_min
+        OR routes.weekdays IS NOT excluded.weekdays OR routes.notify_min IS NOT excluded.notify_min`,
   )
     .bind(
       device.id,
