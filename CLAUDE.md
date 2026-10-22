@@ -25,4 +25,8 @@ Needed environment variables / connectors for this project (details in `README.m
 - GitHub repository secret `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit, D1: Edit, Account Settings: Read) for the CI preview/deploy jobs.
 - Worker secrets: `VAPID_PRIVATE_KEY`, `INVITE_CODE`; vars `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `MAX_DEVICES` in `wrangler.jsonc`. Rotating VAPID invalidates every subscription.
 - A remote session reaches `api.cloudflare.com` through the proxy-injected token (account `02a4c350badad3fae1cee187b3a0f738`, Workers Free).
+  - Verified on 2026-10-22 (ticket 3): the token can upload Workers (when there are no static assets), set secrets, manage cron schedules and KV, and read Workers Logs (`POST .../workers/observability/telemetry/query`) and GraphQL `workersInvocationsAdaptive` (CPU in µs).
+  - It has **no D1 access** (`10000 Authentication error`).
+  - `wrangler` needs `CLOUDFLARE_API_TOKEN` set to any placeholder (the proxy replaces it).
+  - A new cron trigger took about 10 minutes before its first invocation.
 - npm 10 (Node 22) crashes with "Cannot read properties of null (reading 'edgesOut')" when adding packages; add them with `npx -y npm@11 i -D <pkg>`. `npm ci` works with either.
