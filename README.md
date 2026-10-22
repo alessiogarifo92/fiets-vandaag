@@ -42,6 +42,8 @@ GitHub Actions (`.github/workflows/ci.yml`):
 - every PR from this repo: `wrangler versions upload --preview-alias pr-<n>`, so the PR gets `https://pr-<n>-fiets-vandaag.alessiogarifo92.workers.dev` without touching production (the URL is in the job summary);
 - push to `main`: D1 migrations, `wrangler deploy`, then a smoke test that `/api/health` reports the new commit.
 
+**Migrations** run on every PR preview too, because previews share the production D1. So every migration must be additive and backward compatible (new tables or nullable columns; never drop, rename or wipe), and a migration that has run from a preview is never edited afterwards: fix it with a new migration.
+
 The preview and deploy jobs need the repository secret `CLOUDFLARE_API_TOKEN` and skip themselves without it. Token permissions (account `02a4c350badad3fae1cee187b3a0f738` only): **Workers Scripts: Edit**, **D1: Edit**, **Account Settings: Read**. Previews share the production D1 database.
 
 Manual deploy, if CI is unavailable:

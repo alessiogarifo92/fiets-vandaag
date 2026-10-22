@@ -97,6 +97,12 @@ jobs:
             echo "::error::Cannot read the Worker (HTTP $code); check the CLOUDFLARE_API_TOKEN permissions in README.md."
             exit 1
           fi
+      # Previews share the production D1, so a PR's new tables must exist before its preview can use them.
+      # Migrations are additive and backward compatible (README.md "Deploy"); once one has run here, it is never
+      # edited, only followed by a new one. Production code ignores tables it does not know yet.
+      - name: Apply D1 migrations
+        if: steps.token.outputs.present == 'true'
+        run: npx wrangler d1 migrations apply fiets-vandaag --remote
       - name: Upload preview version
         if: steps.token.outputs.present == 'true'
         run: |
