@@ -48,7 +48,7 @@
       if (pushState === 'on') {
         pushState = await disablePush();
       } else {
-        pushState = await enablePush({ invite: storedInvite ?? invite, lang: locale.lang });
+        pushState = await enablePush({ invite, lang: locale.lang });
         if (pushState === 'on') storedInvite = await load('invite').then((v) => v ?? null);
       }
     } catch (err) {

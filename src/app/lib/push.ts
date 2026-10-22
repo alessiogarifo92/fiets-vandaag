@@ -69,7 +69,7 @@ async function currentSubscription(deps: PushDeps): Promise<PushRecord> {
 }
 
 export interface EnableOptions {
-  /** Needed only when the device is not registered yet. */
+  /** A typed code; without one the stored code (invite link) is used. Needed only until registered. */
   invite: string | undefined;
   lang: Lang;
   fetchFn?: FetchFn;
@@ -80,8 +80,9 @@ export interface EnableOptions {
  * the route. Throws `ApiError` (`invite_missing` before anything is asked, or the server's code).
  */
 export async function enablePush(opts: EnableOptions, deps: PushDeps = browserDeps): Promise<PushState> {
-  const device = await load('device');
-  const invite = opts.invite?.trim();
+  const [device, stored] = await Promise.all([load('device'), load('invite')]);
+  // The typed code wins; otherwise the one from the invite link (even if the screen has not read it yet).
+  const invite = opts.invite?.trim() || stored;
   if (!device && !invite) throw new ApiError(0, 'invite_missing');
   const permission = await deps.requestPermission();
   if (permission === 'denied') return 'denied';

@@ -114,6 +114,13 @@ describe('enablePush', () => {
     expect(await load('invite')).toBe('abc');
   });
 
+  it('uses the invite stored from the invite link when none is typed', async () => {
+    await save('invite', 'from-link');
+    const api = fakeApi();
+    expect(await enablePush({ invite: '', lang: 'en', fetchFn: api.fetch }, deps({}).d)).toBe('on');
+    expect((api.calls[0]!.body as { invite: string }).invite).toBe('from-link');
+  });
+
   it('refuses without an invite before asking anything', async () => {
     const { d, requestPermission } = deps({});
     await expect(enablePush({ invite: '  ', lang: 'en' }, d)).rejects.toMatchObject({

@@ -146,7 +146,10 @@ test('Android: the push toggle is shown and nothing asks permission before a tap
 
   await page.getByLabel('Invite code').fill('abc');
   await page.getByRole('switch', { name: 'Morning notification' }).click();
-  expect(await page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks)).toBe(1);
+  // The prompt follows an IndexedDB read, so it is not there the instant the click returns.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks))
+    .toBe(1);
   await expect(page.getByText('Notifications are blocked.', { exact: false })).toBeVisible();
   await expect(page.getByRole('switch', { name: 'Morning notification' })).toBeDisabled();
 });
