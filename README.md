@@ -30,7 +30,7 @@ Layout: `src/core` is pure TypeScript (its tsconfig has no DOM or Workers types)
 - `public/manifest.webmanifest` (id/scope `/`, standalone) with icons in `public/icons/` (192, 512, maskable 512, `apple-touch-icon` 180).
 - `src/app/sw.ts` is built to `/sw.js` by `tools/sw-plugin.ts`, which injects the list of built files: the app shell is precached, page loads are network first with the cached shell offline, built files are cache first. The cache name is a hash of the build, so each deploy replaces it; the page reloads once when a new worker takes over. `/api/*`, PDOK and Open-Meteo are never intercepted.
 - `public/_headers` serves `/sw.js` and the manifest with `Cache-Control: no-cache`.
-- iOS in the browser starts onboarding with the "Add to Home Screen" steps (`#/install`), because the installed app has its own storage and is the only place web push works. The notification toggle appears only where push works (on iOS: installed, 16.4+) and asks permission only on a tap; the subscription stays on the device until the device API (ticket 4).
+- iOS in the browser starts onboarding with the "Add to Home Screen" steps (`#/install`), because the installed app has its own storage and is the only place web push works. The notification toggle appears only where push works (on iOS: installed, 16.4+) and asks permission only on a tap; turning it on registers the device with the server (see "Device API and invites").
 - Playwright checks installability through Chrome's `Page.getInstallabilityErrors` (the check Lighthouse's PWA audit used) and offline mode; installing, standalone mode and push delivery need a real Android phone and iPhone.
 
 ## Deploy
@@ -61,7 +61,7 @@ Public values live in `wrangler.jsonc` `vars`. Secrets are set once per Worker w
 | `VAPID_PUBLIC_KEY` | var (committed) | Public half of the web-push VAPID key pair (P-256, base64url, uncompressed point). Built into the app for `pushManager.subscribe`. |
 | `VAPID_SUBJECT` | var (committed) | VAPID `sub` claim: the app's https origin. |
 | `VAPID_PRIVATE_KEY` | **secret** | Private half (base64url `d` of the P-256 key). Signs the VAPID JWT for every push. |
-| `INVITE_CODE` | **secret** | Code inside the invite link/QR; `POST /api/devices` rejects registrations without it (ticket 4). |
+| `INVITE_CODE` | **secret** | Code inside the invite link/QR; `POST /api/devices` rejects registrations without it (403 `invite_invalid`; unset = 503 `registration_closed`). |
 | `MAX_DEVICES` | var (default `50`) | Global device cap; registration answers 503 `capacity` when full. Can be overridden as a secret/var in the dashboard without a code change. |
 
 **Rotating the VAPID key pair invalidates every push subscription.** Every device has to subscribe again (re-enable notifications in the app). Only rotate if the private key leaks. To rotate: generate a new P-256 pair, update `VAPID_PUBLIC_KEY` in `wrangler.jsonc`, `wrangler secret put VAPID_PRIVATE_KEY`, deploy, and tell testers to re-enable notifications.
@@ -71,6 +71,23 @@ Generate a pair:
 ```bash
 node -e 'const s=crypto.subtle;s.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign"]).then(async k=>console.log("public ",Buffer.from(await s.exportKey("raw",k.publicKey)).toString("base64url"),"\nprivate",(await s.exportKey("jwk",k.privateKey)).d))'
 ```
+
+## Device API and invites
+
+Same origin, `/api/*` (docs/architecture.md §2, §5). Errors are `{error:{code,message,fields?}}`; bodies over 2 KB get 413.
+
+| Endpoint | Auth | What it does |
+|---|---|---|
+| `POST /api/devices {invite, lang, push}` | invite code | 201 `{deviceId, secret}`; only `sha256(secret)` is stored. 403 `invite_invalid`, 503 `capacity` at `MAX_DEVICES`. The push endpoint must be on fcm.googleapis.com, *.push.services.mozilla.com, web.push.apple.com or *.notify.windows.com. Re-registering the same endpoint replaces the old device. Sends a welcome push (skipped without `VAPID_PRIVATE_KEY`). |
+| `GET\|PATCH\|DELETE /api/devices/me` | `Bearer <id>.<secret>` | Read the device and its routes; change `lang` and/or `push` (409 `endpoint_taken`); delete the device with its routes, deliveries and opens in one transaction. |
+| `PUT\|DELETE /api/routes/:slot` (1 or 2) | Bearer | `{cell, bearing, window, weekdays, notifyAt}`: midpoint cell and bearing only, never start/end. A change clears `next_run_at` for the cron (ticket 5). |
+| `POST /api/opens {date, source}` | Bearer | One row per device, Amsterdam date and source (`app`/`notification`). |
+
+**Invite link:** `https://fiets-vandaag.alessiogarifo92.workers.dev/?invite=<INVITE_CODE>` (a QR code of the same URL works). The app keeps the code on the device and removes it from the address bar. On iOS the installed app has its own storage, so the code is typed once in the notification card there.
+
+**App side** (`src/app/lib/device.ts`, `push.ts`, `sync.ts`): the toggle registers after permission is granted and sends route slot 1 (default weekdays Monday-Friday, default push time half an hour before the window, changeable in the card). Every open and return to the foreground re-sends a rotated push endpoint, logs one `app` open per day and re-sends a changed route. Turning notifications off deletes the device on the server. "Delete my data" on the privacy page deletes the server copy first, then the subscription and everything on the phone.
+
+**Local D1:** `npm run dev`/`vite preview` keep their D1 in `.wrangler/state`; apply the schema there once with `npx wrangler d1 migrations apply fiets-vandaag --local` (if the cloudflare plugin's `.wrangler/deploy/config.json` redirect points wrangler at `dist/`, pass `--persist-to .wrangler/state`). Worker tests apply the migrations themselves.
 
 ## Third parties called from the browser
 
