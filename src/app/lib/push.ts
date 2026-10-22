@@ -1,6 +1,8 @@
-// The morning-notification toggle. Permission is asked only from a tap (iOS requires it), and the
-// subscription stays on this device: sending it to the server is ticket 4.
+// The morning-notification toggle. Permission is asked only from a tap (iOS requires it); turning it on
+// registers the device with the server (with the invite code), turning it off removes it there.
 
+import type { Lang } from '../../core/validate';
+import { ApiError, deleteDevice, registerDevice, syncRoute, updatePush, type FetchFn } from './device';
 import { load, remove, save, type PushRecord } from './store';
 
 /** Same value as `VAPID_PUBLIC_KEY` in wrangler.jsonc (a unit test keeps them equal). */
@@ -40,20 +42,17 @@ export const browserDeps: PushDeps = {
   requestPermission: () => Notification.requestPermission(),
 };
 
-/** The toggle's state on screen open: on only when permission, subscription and stored copy agree. */
+/** The toggle's state on screen open: on only when permission, subscription and server registration agree. */
 export async function readPushState(deps: PushDeps = browserDeps): Promise<PushState> {
   const permission = deps.permission();
   if (permission === 'denied') return 'denied';
   if (permission !== 'granted') return 'off';
-  const stored = await load('push');
-  return stored ? 'on' : 'off';
+  const [stored, device] = await Promise.all([load('push'), load('device')]);
+  return stored && device ? 'on' : 'off';
 }
 
-/** Call only from a tap. Asks permission, subscribes, and keeps the subscription on the device. */
-export async function enablePush(deps: PushDeps = browserDeps): Promise<PushState> {
-  const permission = await deps.requestPermission();
-  if (permission === 'denied') return 'denied';
-  if (permission !== 'granted') return 'off';
+/** The current browser subscription, or a new one; `subscribe` needs permission already granted. */
+async function currentSubscription(deps: PushDeps): Promise<PushRecord> {
   const reg = await deps.registration();
   const sub =
     (await reg.pushManager.getSubscription()) ??
@@ -66,14 +65,66 @@ export async function enablePush(deps: PushDeps = browserDeps): Promise<PushStat
     await sub.unsubscribe().catch(() => false);
     throw new Error('push subscription without keys');
   }
+  return record;
+}
+
+export interface EnableOptions {
+  /** Needed only when the device is not registered yet. */
+  invite: string | undefined;
+  lang: Lang;
+  fetchFn?: FetchFn;
+}
+
+/**
+ * Call only from a tap. Asks permission, subscribes, registers the device with the invite code and sends
+ * the route. Throws `ApiError` (`invite_missing` before anything is asked, or the server's code).
+ */
+export async function enablePush(opts: EnableOptions, deps: PushDeps = browserDeps): Promise<PushState> {
+  const device = await load('device');
+  const invite = opts.invite?.trim();
+  if (!device && !invite) throw new ApiError(0, 'invite_missing');
+  const permission = await deps.requestPermission();
+  if (permission === 'denied') return 'denied';
+  if (permission !== 'granted') return 'off';
+  const record = await currentSubscription(deps);
+  if (device) await updatePush(record, opts.fetchFn);
+  else await registerDevice(invite!, opts.lang, record, opts.fetchFn);
   await save('push', record);
+  // The route can follow on the next open if this fails; the toggle is on either way.
+  await syncRoute(opts.fetchFn).catch(() => {});
   return 'on';
 }
 
-export async function disablePush(deps: PushDeps = browserDeps): Promise<PushState> {
+/** Turns notifications off: the server forgets the device (best effort) and the subscription is dropped. */
+export async function disablePush(deps: PushDeps = browserDeps, fetchFn?: FetchFn): Promise<PushState> {
+  // Offline is fine: the push service answers 410 to the next push and the server then deletes the device.
+  await deleteDevice(fetchFn).catch(() => {});
+  await unsubscribe(deps);
+  return 'off';
+}
+
+export async function unsubscribe(deps: PushDeps = browserDeps): Promise<void> {
   const reg = await deps.registration();
   const sub = await reg.pushManager.getSubscription();
   await sub?.unsubscribe().catch(() => false);
   await remove('push');
-  return 'off';
+}
+
+/**
+ * On every app open (docs/architecture.md §2): when the browser has rotated or dropped the subscription,
+ * subscribe again if needed and send the new endpoint. Does nothing unless registered with permission.
+ */
+export async function resyncPush(deps: PushDeps = browserDeps, fetchFn?: FetchFn): Promise<void> {
+  if (deps.permission() !== 'granted') return;
+  const [device, stored] = await Promise.all([load('device'), load('push')]);
+  if (!device) return;
+  const record = await currentSubscription(deps);
+  if (
+    stored?.endpoint === record.endpoint &&
+    stored.keys.p256dh === record.keys.p256dh &&
+    stored.keys.auth === record.keys.auth
+  )
+    return;
+  await updatePush(record, fetchFn);
+  await save('push', record);
 }

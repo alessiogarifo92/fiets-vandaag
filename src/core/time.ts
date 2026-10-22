@@ -37,6 +37,13 @@ export function nextDate(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** The calendar day before `date` (YYYY-MM-DD). */
+export function previousDate(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 export interface CommuteDay {
   date: string;
   tomorrow: boolean;

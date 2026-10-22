@@ -1,30 +1,71 @@
 <script lang="ts">
-  import { tr } from '../lib/i18n.svelte';
+  import type { MessageKey } from '../../core/i18n';
+  import { formatMinutes } from '../../core/time';
+  import type { CommuteWindow } from '../../core/validate';
+  import { ApiError, defaultNotifyAt, NOTIFY_TIMES, syncRoute } from '../lib/device';
+  import { locale, tr } from '../lib/i18n.svelte';
   import { currentPushEnv, pushAvailability } from '../lib/platform';
   import { disablePush, enablePush, readPushState, type PushState } from '../lib/push';
+  import { load, remove, save } from '../lib/store';
+
+  let { window }: { window: CommuteWindow } = $props();
 
   // On iOS the toggle exists only in the installed app; the browser gets the Install screen instead.
   const available = pushAvailability(currentPushEnv()) === 'available';
 
   let pushState = $state<PushState>('off');
   let busy = $state(false);
-  let failed = $state(false);
+  let error = $state<MessageKey | null>(null);
+  // The invite field shows until the device holds a code (from the invite link or typed here).
+  let storedInvite = $state<string | null>(null);
+  let invite = $state('');
+  let notifyAt = $state<number | null>(null);
+  const time = $derived(notifyAt ?? defaultNotifyAt(window));
 
   $effect(() => {
-    if (available) void readPushState().then((s) => (pushState = s));
+    if (!available) return;
+    void Promise.all([readPushState(), load('invite'), load('notifyAt')]).then(([s, inv, at]) => {
+      pushState = s;
+      storedInvite = inv ?? null;
+      notifyAt = at ?? null;
+    });
   });
+
+  function messageFor(err: unknown): MessageKey {
+    if (err instanceof ApiError) {
+      if (err.code === 'invite_missing') return 'notify.invite.missing';
+      if (err.code === 'invite_invalid') return 'notify.invite.invalid';
+      if (err.code === 'capacity') return 'notify.capacity';
+    }
+    return 'notify.error';
+  }
 
   // Permission is asked here, from the tap, never on load.
   async function toggle() {
     busy = true;
-    failed = false;
+    error = null;
     try {
-      pushState = pushState === 'on' ? await disablePush() : await enablePush();
-    } catch {
-      failed = true;
+      if (pushState === 'on') {
+        pushState = await disablePush();
+      } else {
+        pushState = await enablePush({ invite: storedInvite ?? invite, lang: locale.lang });
+        if (pushState === 'on') storedInvite = await load('invite').then((v) => v ?? null);
+      }
+    } catch (err) {
+      error = messageFor(err);
+      if (err instanceof ApiError && err.code === 'invite_invalid') {
+        storedInvite = null;
+        await remove('invite').catch(() => {});
+      }
     } finally {
       busy = false;
     }
+  }
+
+  async function changeTime(event: Event) {
+    notifyAt = Number((event.currentTarget as HTMLSelectElement).value);
+    await save('notifyAt', notifyAt).catch(() => {});
+    await syncRoute().catch(() => {});
   }
 </script>
 
@@ -46,10 +87,36 @@
         <span></span>
       </button>
     </div>
+    {#if pushState !== 'on' && pushState !== 'denied' && !storedInvite}
+      <label class="field">
+        <span>{tr('notify.invite.label')}</span>
+        <input
+          type="text"
+          bind:value={invite}
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          maxlength="128"
+          aria-describedby="invite-hint"
+        />
+        <small id="invite-hint">{tr('notify.invite.hint')}</small>
+      </label>
+    {/if}
+    {#if pushState === 'on'}
+      <label class="field">
+        <span>{tr('notify.time.label')}</span>
+        <select value={time} onchange={changeTime} aria-describedby="notify-days">
+          {#each NOTIFY_TIMES as m (m)}
+            <option value={m}>{formatMinutes(m)}</option>
+          {/each}
+        </select>
+        <small id="notify-days">{tr('notify.time.days')}</small>
+      </label>
+    {/if}
     {#if pushState === 'denied'}
       <p class="status" role="status">{tr('notify.denied')}</p>
-    {:else if failed}
-      <p class="status" role="alert">{tr('notify.error')}</p>
+    {:else if error}
+      <p class="status" role="alert">{tr(error)}</p>
     {:else if pushState === 'on'}
       <p class="status" role="status">{tr('notify.on')}</p>
     {/if}
@@ -84,6 +151,38 @@
   .status {
     margin-top: 12px;
     color: var(--ink);
+  }
+
+  .field {
+    display: block;
+    margin-top: 20px;
+  }
+
+  .field span {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .field input,
+  .field select {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-input);
+    background: var(--card);
+    color: var(--ink);
+    font: 400 16px/1.2 var(--font-ui);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field small {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--reed);
   }
 
   /* 44 px tall hit area around a 28 px track. */

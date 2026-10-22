@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commuteDay, formatMinutes, localNow, nextDate, parseMinutes } from './time';
+import { commuteDay, formatMinutes, localNow, nextDate, parseMinutes, previousDate } from './time';
 
 describe('formatMinutes / parseMinutes', () => {
   it.each([
@@ -51,5 +51,14 @@ describe('nextDate and commuteDay', () => {
       tomorrow: true,
       notBeforeMin: null,
     });
+  });
+});
+
+describe('previousDate', () => {
+  it('crosses month and year boundaries and the DST change', () => {
+    expect(previousDate('2026-11-01')).toBe('2026-10-31');
+    expect(previousDate('2027-01-01')).toBe('2026-12-31');
+    expect(previousDate('2026-10-26')).toBe('2026-10-25');
+    expect(previousDate(nextDate('2028-02-28'))).toBe('2028-02-28');
   });
 });

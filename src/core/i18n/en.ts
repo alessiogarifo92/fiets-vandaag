@@ -106,13 +106,13 @@ export const en = {
     'Your phone asks Open-Meteo (api.open-meteo.com) for the forecast of a ~1 km area around the middle of your route, never your addresses. Open-Meteo sees that area and your IP address.',
   'privacy.push.title': 'Notifications (only if you turn them on)',
   'privacy.push.body':
-    'Your phone registers with its push service (Apple, Google or Mozilla), which gives it an address for notifications. For now that address stays on this phone.',
+    'Your phone registers with its push service (Apple, Google, Mozilla or Microsoft), which gives it an address for notifications. When you turn notifications on, that address goes to our server so it can send you the morning advice.',
   'privacy.server.title': 'Our server',
   'privacy.server.body':
-    'Nothing yet: today the app works without our server. When morning notifications arrive, the server will store only your push subscription, the ~1 km area and direction of your route, and your schedule, and this page will say so first.',
+    'Only if you turn on notifications. Our server, run by Cloudflare, then stores: your push address and language; the ~1 km area around the middle of your route and its direction, never your addresses; your commute window, weekdays and notification time; a log of sent notifications (14 days) and of the days you opened the app (30 days). A phone that neither opens the app nor receives a notification for 60 days is deleted. Our code never logs your IP address, push address or location; Cloudflare handles your IP address to deliver each request.',
   'privacy.delete.title': 'Deleting',
   'privacy.delete.body':
-    'Clear this site’s data in your browser settings to remove everything stored on this phone.',
+    '“Delete my data” removes everything from this phone and from our server at once. Deleted server data stays in Cloudflare’s 7-day database recovery history, then it is gone. Clearing this site’s data in your browser removes only what is on this phone.',
 
   'about.title': 'About',
   'about.body':
@@ -136,9 +136,25 @@ export const en = {
   'notify.title': 'Morning notification',
   'notify.body': 'The advice on your lock screen before you leave.',
   'notify.toggle': 'Morning notification',
-  'notify.on': 'On. Daily notifications start with a coming update.',
+  'notify.on': 'On. A test notification is on its way; the daily advice starts with a coming update.',
   'notify.denied': 'Notifications are blocked. Allow them for Fiets Vandaag in your phone’s settings.',
   'notify.error': 'Notifications could not be turned on. Try again.',
+  'privacy.delete.button': 'Delete my data',
+  'privacy.delete.confirm':
+    'This removes your route, settings and notifications from this phone and from our server. It cannot be undone.',
+  'privacy.delete.yes': 'Delete everything',
+  'privacy.delete.cancel': 'Cancel',
+  'privacy.delete.done': 'Your data has been deleted.',
+  'privacy.delete.error': 'Your data could not be deleted. Check your connection and try again.',
+  'notify.invite.label': 'Invite code',
+  'notify.invite.hint': 'It is in your invite link or QR code.',
+  'notify.invite.missing': 'Enter your invite code first.',
+  'notify.invite.invalid': 'This invite code is not valid. Check it and try again.',
+  'notify.capacity': 'Fiets Vandaag is full for now. Try again later.',
+  'notify.time.label': 'Notify me at',
+  'notify.time.days': 'Monday to Friday',
+  'push.welcome.title': 'Notifications are on',
+  'push.welcome.body': 'This is how the morning advice will reach you.',
 } as const;
 
 export type MessageKey = keyof typeof en;
