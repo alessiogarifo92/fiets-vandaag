@@ -221,6 +221,16 @@ export interface ServerRoute {
   window: CommuteWindow;
   weekdays: number[];
   notifyAt: number | null;
+  /** Estimated ride time in minutes (src/core/route.ts); null from an app older than ticket 5. */
+  rideMin: number | null;
+}
+
+/** Optional for older apps; when given, a whole number of minutes that fits inside the window. */
+export function validateRideMin(v: unknown, window: CommuteWindow): Result<number | null> {
+  if (v === undefined || v === null) return ok(null);
+  if (!isInt(v) || v < 1 || v > window.end - window.start)
+    return fail({ rideMin: 'must be a whole number of minutes that fits inside the window' });
+  return ok(v);
 }
 
 export function validateServerRoute(v: unknown): Result<ServerRoute> {
@@ -235,12 +245,15 @@ export function validateServerRoute(v: unknown): Result<ServerRoute> {
   if (!weekdays.ok) return weekdays;
   const notifyAt = validateNotifyMin(v.notifyAt);
   if (!notifyAt.ok) return notifyAt;
+  const rideMin = validateRideMin(v.rideMin, window.value);
+  if (!rideMin.ok) return rideMin;
   return ok({
     cell: cell.value,
     bearing: bearing.value,
     window: window.value,
     weekdays: weekdays.value,
     notifyAt: notifyAt.value,
+    rideMin: rideMin.value,
   });
 }
 

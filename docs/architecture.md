@@ -38,6 +38,7 @@ One Vite project with `@cloudflare/vite-plugin` builds both the SPA and the Work
   - Keys: `id`, `device_id`, `slot` (1 or 2), UNIQUE(`device_id`, `slot`).
   - Location: `cell` (the route midpoint rounded to about 1 km) and `bearing_deg`. **Start and end points are never sent to the server.**
   - Timing: `window_start_min` and `window_end_min` (at most 180 minutes apart), a `weekdays` bitmask, `notify_min` (04:00-12:00 in 5-minute steps, or NULL), `next_run_at`, `lease_until`, `updated_at`.
+  - `ride_min` (added in ticket 5, migration 0002): the app's estimated ride time, so the push computes exactly the recommendation the Today screen shows. NULL for a route saved by an older app until its next open re-sends it; the cron then assumes 30 minutes (capped at the window length).
   - A partial index on `next_run_at`.
 - **`deliveries`**: primary key (`route_id`, `local_date`). `status` is one of `claimed`, `retry`, `sent`, `skipped_late`, `no_data`, `failed`; there is also `attempts` and `http_status`.
 - **`weather_cache`**: `cell` (PK), `fetched_at`, `payload`.
@@ -77,7 +78,11 @@ Budget per run: at most 1 + `BATCH_SIZE` external subrequests and at most about 
 
 **Throughput:** `BATCH_SIZE` is 4 and `MAX_DEVICES` stays 50 (measured in ticket 3). One run a minute sends 4 pushes, so 50 routes due at 07:00 all get their push within 13 minutes. If Workers Logs ever show `exceededCpu`, `BATCH_SIZE` drops to 2 through the env var (25 minutes for 50 routes, so `MAX_DEVICES` would then need lowering to 30).
 
-**CPU kills** are read from Workers Logs (`exceededCpu`). They are not inferred from stale rows. Since ticket 4 the invocation logs are off (§3), so ticket 5 confirms where `exceededCpu` still shows: in a console log of its own, or in GraphQL `workersInvocationsAdaptive` (status and CPU time, used in ticket 3).
+**CPU kills** are not inferred from stale rows. Since ticket 4 the invocation logs are off (§3), so Workers Logs no longer carry an `exceededCpu` outcome per request. Checked in ticket 5 (2026-10-23):
+- **Where a kill shows:** GraphQL `workersInvocationsAdaptive` filtered on `scriptName: "fiets-vandaag"`. It counts cron invocations too (`daily-smile`, a once-a-minute cron, showed 56 invocations in one hour), grouped by `status` with `cpuTimeP50`/`cpuTimeP99` in µs. A CPU kill is `status: exceededResources`. The dataset `workersInvocationsScheduled` returned no rows on this account.
+- **Per-run detail:** every run logs one line, `drain {"scheduled","claimed","duplicate","statuses","http","weatherFetched","weatherFailed","cleanup"}`: counts only, no endpoint, cell or IP. A run killed for CPU never writes it, so an `exceededResources` minute without a `drain` line is a kill.
+
+**Ticket 5 implementation notes:** the lease lasts 2 minutes. The claim, the scheduling of NULL routes (from 15 minutes ago, so a route saved just after its time still gets today's push) and the last cleanup time share the first D1 call; the delivery rows, devices and cached weather the second; the write-back the third. A write-back only moves `next_run_at` if `updated_at` is unchanged, so a route edited during the run is rescheduled from scratch. A delivery left `claimed` by a killed run is not retried that day. 429/5xx is retried at once, inside the same run. Keys that cannot be encrypted to count as a rejection; a network error or timeout counts as nothing.
 
 ## 5. API (same origin, `/api/*`, `run_worker_first` for `/api/*` only)
 - `POST /api/devices {invite, lang, push:{endpoint, keys:{p256dh, auth}}}` returns 201 `{deviceId, secret}`.

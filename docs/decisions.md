@@ -107,3 +107,11 @@ Measured on a throwaway Workers Free Worker, since deleted. 20 cron runs sent N 
 - **If CPU kills appear:** lower `BATCH_SIZE` to 2 through the env var. Never upgrade the plan.
 - **Platform note.** A newly added cron trigger took about 10 minutes before its first invocation.
 - **Still unverified:** Apple (no iOS subscription was measured), and a batch that mixes two push-service origins. Ticket 5 logs CPU per run during its first real mornings.
+
+## Ticket 5 — Cron drain (2026-10-23)
+
+- **One cron trigger, `* 2-11 * * *` UTC,** in `wrangler.jsonc`. Before this ticket the account had 2 (`daily-smile`, `projectamsterdam`) and fiets-vandaag none, so it now uses 3 of its 5 Free triggers, and fiets-vandaag uses 1 of the 3 it may have. Only the deployed Worker runs it, never a preview version.
+- **`ride_min` on the server.** The push must say what the Today screen says, and the recommendation depends on the ride time, which the server did not have. The app now sends `rideMin` with the route (a 5-minute estimate, never the start or end point); migration 0002 adds a nullable column. The privacy page lists it.
+- **Where CPU kills show:** GraphQL `workersInvocationsAdaptive`, `status: exceededResources` (architecture §4, "CPU kills"). The `drain` log line per run gives the number of pushes for each minute.
+- **Push padding:** `pad: false`; the VAPID header is signed once per push-service origin per run.
+- **Still to measure on the first real mornings:** CPU per run with Apple and FCM in one batch (architecture "Unverified"). If a run shows `exceededResources`, set `BATCH_SIZE` to 2.

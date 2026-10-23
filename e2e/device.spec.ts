@@ -91,13 +91,15 @@ test('an invite link registers the device after the tap and sends only the route
   const put = calls.find((c) => c.path === '/api/routes/1')!;
   expect(put.method).toBe('PUT');
   expect(put.auth).toBe(`Bearer ${DEVICE.deviceId}.${DEVICE.secret}`);
-  // Midpoint of Damrak 1 and Gustav Mahlerlaan 10, rounded to its ~1 km cell; window 07:30-09:00.
+  // Midpoint of Damrak 1 and Gustav Mahlerlaan 10, rounded to its ~1 km cell; window 07:30-09:00; the
+  // estimated ride (about 4.6 km straight) so the push computes the same advice as the Today screen.
   expect(put.body).toEqual({
     cell: '52.36,4.89',
     bearing: 201,
     window: { start: 450, end: 540 },
     weekdays: [1, 2, 3, 4, 5],
     notifyAt: 420,
+    rideMin: 25,
   });
   expect(JSON.stringify(put.body)).not.toMatch(/Damrak|Mahler|52\.377|4\.898|52\.338|4\.873/);
 

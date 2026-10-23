@@ -109,7 +109,7 @@ export const it: Messages = {
     'Il telefono si registra presso il suo servizio push (Apple, Google, Mozilla o Microsoft), che gli assegna un indirizzo per le notifiche. Quando attivi le notifiche, quell’indirizzo va al nostro server, così può mandarti il consiglio del mattino.',
   'privacy.server.title': 'Il nostro server',
   'privacy.server.body':
-    'Solo se attivi le notifiche. Il nostro server, gestito da Cloudflare, salva allora: il tuo indirizzo push e la lingua; l’area di ~1 km attorno al centro del percorso e la sua direzione, mai i tuoi indirizzi; la fascia di viaggio, i giorni e l’orario della notifica; un registro delle notifiche inviate (14 giorni) e dei giorni in cui hai aperto l’app (30 giorni). Un telefono che per 60 giorni non apre l’app e non riceve notifiche viene cancellato. Il nostro codice non registra mai il tuo indirizzo IP, l’indirizzo push o la posizione; Cloudflare tratta il tuo indirizzo IP per consegnare ogni richiesta.',
+    'Solo se attivi le notifiche. Il nostro server, gestito da Cloudflare, salva allora: il tuo indirizzo push e la lingua; l’area di ~1 km attorno al centro del percorso e la sua direzione, mai i tuoi indirizzi; la fascia di viaggio, il tempo stimato in bici, i giorni e l’orario della notifica; un registro delle notifiche inviate (14 giorni) e dei giorni in cui hai aperto l’app (30 giorni). Un telefono che per 60 giorni non apre l’app e non riceve notifiche viene cancellato. Il nostro codice non registra mai il tuo indirizzo IP, l’indirizzo push o la posizione; Cloudflare tratta il tuo indirizzo IP per consegnare ogni richiesta.',
   'privacy.delete.title': 'Cancellare',
   'privacy.delete.body':
     '“Cancella i miei dati” elimina tutto in una volta, su questo telefono e sul nostro server. I dati cancellati dal server restano per 7 giorni nella cronologia di ripristino del database di Cloudflare, poi spariscono. Cancellare i dati del sito dal browser elimina solo ciò che è su questo telefono.',
@@ -138,7 +138,7 @@ export const it: Messages = {
   'notify.body': 'Il consiglio sulla schermata di blocco prima di partire.',
   'notify.toggle': 'Notifica del mattino',
   'notify.on':
-    'Attiva. Sta arrivando una notifica di prova; il consiglio quotidiano partirà con un prossimo aggiornamento.',
+    'Attiva. Sta arrivando una notifica di prova; il consiglio arriva ogni mattina all’orario qui sotto.',
   'notify.denied':
     'Le notifiche sono bloccate. Consentile per Fiets Vandaag nelle impostazioni del telefono.',
   'notify.error': 'Non è stato possibile attivare le notifiche. Riprova.',
@@ -158,4 +158,6 @@ export const it: Messages = {
   'notify.time.days': 'Dal lunedì al venerdì',
   'push.welcome.title': 'Notifiche attive',
   'push.welcome.body': 'Il consiglio del mattino ti arriverà così.',
+  'push.nodata.title': 'Niente dati meteo stamattina',
+  'push.nodata.body': 'Non è stato possibile caricare le previsioni. Apri l’app per controllare tu il meteo.',
 };

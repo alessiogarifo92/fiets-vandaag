@@ -112,7 +112,10 @@ export function defaultNotifyAt(window: CommuteWindow): number {
 /** Every push time the server accepts: 04:00-12:00 in 5-minute steps. */
 export const NOTIFY_TIMES: readonly number[] = Array.from({ length: 97 }, (_, i) => 4 * 60 + i * 5);
 
-/** The server's copy of a route: the midpoint cell and the bearing, never the start and end. */
+/**
+ * The server's copy of a route: the midpoint cell and the bearing, never the start and end. The estimated
+ * ride time lets the morning push compute the same advice as the Today screen.
+ */
 export function serverRoute(route: LocalRoute, notifyAt: number): ServerRoute {
   const g = routeGeometry(route);
   return {
@@ -121,6 +124,7 @@ export function serverRoute(route: LocalRoute, notifyAt: number): ServerRoute {
     window: { start: route.window.start, end: route.window.end },
     weekdays: DEFAULT_WEEKDAYS,
     notifyAt,
+    rideMin: g.rideMin,
   };
 }
 
