@@ -33,10 +33,15 @@ export interface HourPoint {
   gust: number;
 }
 
-export function forecastUrl(cell: LatLon): string {
+/**
+ * The forecast request for one cell (the app) or several (the cron's single multi-location call). Every
+ * other parameter is the same, so the push and the Today screen see the same forecast.
+ */
+export function forecastUrl(cells: LatLon | readonly LatLon[]): string {
+  const list = Array.isArray(cells) ? cells : [cells as LatLon];
   const params = queryString({
-    latitude: String(cell.lat),
-    longitude: String(cell.lon),
+    latitude: list.map((c) => String(c.lat)).join(','),
+    longitude: list.map((c) => String(c.lon)).join(','),
     hourly: HOURLY_VARIABLES.join(','),
     models: FORECAST_MODEL,
     timezone: FORECAST_TIMEZONE,
@@ -80,4 +85,14 @@ export function parseForecast(body: unknown): HourPoint[] | null {
     });
   });
   return out;
+}
+
+/**
+ * Parses a multi-location response (an array, one entry per requested cell, in order; a single cell answers
+ * with a plain object). Returns null when the shape or the count does not match.
+ */
+export function parseForecasts(body: unknown, count: number): (HourPoint[] | null)[] | null {
+  const list = Array.isArray(body) ? (body as unknown[]) : [body];
+  if (list.length !== count) return null;
+  return list.map(parseForecast);
 }

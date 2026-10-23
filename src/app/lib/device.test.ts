@@ -95,6 +95,7 @@ describe('serverRoute', () => {
       window: { start: 480, end: 540 },
       weekdays: [1, 2, 3, 4, 5],
       notifyAt: 450,
+      rideMin: g.rideMin,
     });
     expect(JSON.stringify(body)).not.toMatch(/Damrak|52\.377|4\.898|52\.339|4\.872/);
     expect(validateServerRoute(body).ok).toBe(true);
