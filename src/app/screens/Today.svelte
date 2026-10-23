@@ -125,7 +125,7 @@
       >
     </div>
 
-    <NotifyToggle />
+    <NotifyToggle window={route.window} />
     <InstallCard />
 
     <Attribution />

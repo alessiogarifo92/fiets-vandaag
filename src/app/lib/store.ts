@@ -9,7 +9,7 @@ export interface CachedForecast {
   hours: HourPoint[];
 }
 
-/** The browser's push subscription. Kept on the device only until the device API exists (ticket 4). */
+/** The browser's push subscription, as last sent to the server. */
 export interface PushRecord {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -24,6 +24,21 @@ export interface StoreShape {
   push: PushRecord;
   /** iOS in the browser: the user chose to continue without installing first. */
   installSkipped: boolean;
+  /** Credential from `POST /api/devices`; the server keeps only the hash of the secret. */
+  device: DeviceCredential;
+  /** Invite code from the invite link (`?invite=`) or typed in; kept to register again after turning off. */
+  invite: string;
+  /** Morning push time chosen by the user, minutes of day. */
+  notifyAt: number;
+  /** Local date of the last `POST /api/opens` with source `app`. */
+  openedOn: string;
+  /** JSON of the last route body the server accepted, to skip identical PUTs. */
+  syncedRoute: string;
+}
+
+export interface DeviceCredential {
+  deviceId: string;
+  secret: string;
 }
 
 const DB_NAME = 'fiets-vandaag';
@@ -73,6 +88,11 @@ export async function save<K extends keyof StoreShape>(key: K, value: StoreShape
 
 export async function remove(key: keyof StoreShape): Promise<void> {
   await run('readwrite', (s) => s.delete(key));
+}
+
+/** Removes everything this app stored on the device ("Delete my data"). */
+export async function clear(): Promise<void> {
+  await run('readwrite', (s) => s.clear());
 }
 
 /** Test hook: forget the open connection. */

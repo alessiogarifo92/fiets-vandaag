@@ -50,7 +50,7 @@ One Vite project with `@cloudflare/vite-plugin` builds both the SPA and the Work
   - A device with no app contact and no successful push for 60 days is deleted.
   - Deliveries are kept 14 days, the weather cache 48 hours, `opens` 30 days.
   - D1 Time Travel keeps deleted rows for 7 days; the privacy page says so.
-- **Third parties:** PDOK receives the typed address text. Open-Meteo receives the rounded cell and the user's IP, because the client calls it directly. Workers Logs must not log IPs, endpoints or coordinates.
+- **Third parties:** PDOK receives the typed address text. Open-Meteo receives the rounded cell and the user's IP, because the client calls it directly. Workers Logs must not log IPs, endpoints or coordinates. Workers Logs' automatic invocation logs do record the client IP and the `cf` city coordinates of every request (checked 2026-10-22, ticket 4), so they are off (`observability.logs.invocation_logs: false`).
 
 ## 4. Cron: one trigger, `* 2-11 * * *` (UTC)
 The UTC hours 02-11 cover 04:00-12:00 in Amsterdam under both CET and CEST. The account then uses 3 of its 5 Free triggers.
@@ -77,7 +77,7 @@ Budget per run: at most 1 + `BATCH_SIZE` external subrequests and at most about 
 
 **Throughput:** `BATCH_SIZE` is 4 and `MAX_DEVICES` stays 50 (measured in ticket 3). One run a minute sends 4 pushes, so 50 routes due at 07:00 all get their push within 13 minutes. If Workers Logs ever show `exceededCpu`, `BATCH_SIZE` drops to 2 through the env var (25 minutes for 50 routes, so `MAX_DEVICES` would then need lowering to 30).
 
-**CPU kills** are read from Workers Logs (`exceededCpu`). They are not inferred from stale rows.
+**CPU kills** are read from Workers Logs (`exceededCpu`). They are not inferred from stale rows. Since ticket 4 the invocation logs are off (§3), so ticket 5 confirms where `exceededCpu` still shows: in a console log of its own, or in GraphQL `workersInvocationsAdaptive` (status and CPU time, used in ticket 3).
 
 ## 5. API (same origin, `/api/*`, `run_worker_first` for `/api/*` only)
 - `POST /api/devices {invite, lang, push:{endpoint, keys:{p256dh, auth}}}` returns 201 `{deviceId, secret}`.

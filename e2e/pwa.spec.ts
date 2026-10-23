@@ -139,8 +139,17 @@ test('Android: the push toggle is shown and nothing asks permission before a tap
   );
   expect(await page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks)).toBe(0);
 
+  // Without an invite code nothing is asked yet: the card asks for the code first.
   await page.getByRole('switch', { name: 'Morning notification' }).click();
-  expect(await page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks)).toBe(1);
+  await expect(page.getByText('Enter your invite code first.')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks)).toBe(0);
+
+  await page.getByLabel('Invite code').fill('abc');
+  await page.getByRole('switch', { name: 'Morning notification' }).click();
+  // The prompt follows an IndexedDB read, so it is not there the instant the click returns.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { permissionAsks: number }).permissionAsks))
+    .toBe(1);
   await expect(page.getByText('Notifications are blocked.', { exact: false })).toBeVisible();
   await expect(page.getByRole('switch', { name: 'Morning notification' })).toBeDisabled();
 });

@@ -1,6 +1,9 @@
-import { cloudflareTest } from '@cloudflare/vitest-plugin';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 import { appVersion } from './vite.config.ts';
+
+// Applied to the local D1 before every worker test file (src/worker/test-setup.ts).
+const migrations = await readD1Migrations('./migrations');
 
 export default defineConfig({
   define: {
@@ -10,7 +13,7 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       include: ['src/core/**/*.ts', 'src/worker/**/*.ts', 'src/app/lib/**/*.ts', 'src/app/sw-core.ts'],
-      exclude: ['**/*.test.ts', '**/*.d.ts'],
+      exclude: ['**/*.test.ts', '**/*.d.ts', 'src/worker/test-*.ts', 'src/app/lib/test-api.ts'],
       reporter: ['text', 'json-summary', 'html'],
     },
     projects: [
@@ -33,10 +36,18 @@ export default defineConfig({
       },
       {
         extends: true,
-        plugins: [cloudflareTest({ wrangler: { configPath: './wrangler.jsonc' } })],
+        plugins: [
+          cloudflareTest({
+            wrangler: { configPath: './wrangler.jsonc' },
+            miniflare: {
+              bindings: { TEST_MIGRATIONS: migrations, INVITE_CODE: 'test-invite', MAX_DEVICES: '3' },
+            },
+          }),
+        ],
         test: {
           name: 'worker',
           include: ['src/worker/**/*.test.ts'],
+          setupFiles: ['src/worker/test-setup.ts'],
         },
       },
     ],

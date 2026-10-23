@@ -107,13 +107,13 @@ export const nl: Messages = {
     'Je telefoon vraagt Open-Meteo (api.open-meteo.com) om de verwachting voor een gebied van ~1 km rond het midden van je route, nooit om je adressen. Open-Meteo ziet dat gebied en je IP-adres.',
   'privacy.push.title': 'Meldingen (alleen als je ze aanzet)',
   'privacy.push.body':
-    'Je telefoon meldt zich aan bij zijn pushdienst (Apple, Google of Mozilla), die er een adres voor meldingen aan geeft. Voorlopig blijft dat adres op deze telefoon.',
+    'Je telefoon meldt zich aan bij zijn pushdienst (Apple, Google, Mozilla of Microsoft), die er een adres voor meldingen aan geeft. Zet je meldingen aan, dan gaat dat adres naar onze server, zodat die je het ochtendadvies kan sturen.',
   'privacy.server.title': 'Onze server',
   'privacy.server.body':
-    'Nog niets: de app werkt nu zonder onze server. Zodra er ochtendmeldingen komen, bewaart de server alleen je pushabonnement, het gebied van ~1 km en de richting van je route, en je schema. Deze pagina zegt dat eerst.',
+    'Alleen als je meldingen aanzet. Onze server, die bij Cloudflare draait, bewaart dan: je pushadres en taal; het gebied van ~1 km rond het midden van je route en de richting ervan, nooit je adressen; je reistijdvak, weekdagen en meldtijd; een logboek van verstuurde meldingen (14 dagen) en van de dagen waarop je de app opende (30 dagen). Een telefoon die 60 dagen de app niet opent en geen melding ontvangt, wordt verwijderd. Onze code logt nooit je IP-adres, pushadres of locatie; Cloudflare verwerkt je IP-adres om elk verzoek af te leveren.',
   'privacy.delete.title': 'Verwijderen',
   'privacy.delete.body':
-    'Wis de gegevens van deze site in je browserinstellingen om alles op deze telefoon te verwijderen.',
+    '“Mijn gegevens verwijderen” wist alles in één keer, op deze telefoon en op onze server. Verwijderde servergegevens blijven nog 7 dagen in de herstelgeschiedenis van de database van Cloudflare en zijn daarna weg. De sitegegevens wissen in je browser verwijdert alleen wat op deze telefoon staat.',
 
   'about.title': 'Over',
   'about.body':
@@ -138,8 +138,25 @@ export const nl: Messages = {
   'notify.title': 'Ochtendmelding',
   'notify.body': 'Het advies op je vergrendelscherm voordat je vertrekt.',
   'notify.toggle': 'Ochtendmelding',
-  'notify.on': 'Aan. Dagelijkse meldingen beginnen met een volgende update.',
+  'notify.on': 'Aan. Er komt nu een testmelding; het dagelijkse advies begint met een volgende update.',
   'notify.denied':
     'Meldingen zijn geblokkeerd. Sta ze toe voor Fiets Vandaag in de instellingen van je telefoon.',
   'notify.error': 'Meldingen konden niet worden aangezet. Probeer het opnieuw.',
+  'privacy.delete.button': 'Mijn gegevens verwijderen',
+  'privacy.delete.confirm':
+    'Dit verwijdert je route, instellingen en meldingen van deze telefoon en van onze server. Dit kan niet ongedaan worden gemaakt.',
+  'privacy.delete.yes': 'Alles verwijderen',
+  'privacy.delete.cancel': 'Annuleren',
+  'privacy.delete.done': 'Je gegevens zijn verwijderd.',
+  'privacy.delete.error':
+    'Je gegevens konden niet worden verwijderd. Controleer je verbinding en probeer het opnieuw.',
+  'notify.invite.label': 'Uitnodigingscode',
+  'notify.invite.hint': 'Die staat in je uitnodigingslink of QR-code.',
+  'notify.invite.missing': 'Vul eerst je uitnodigingscode in.',
+  'notify.invite.invalid': 'Deze uitnodigingscode klopt niet. Controleer hem en probeer het opnieuw.',
+  'notify.capacity': 'Fiets Vandaag zit voorlopig vol. Probeer het later opnieuw.',
+  'notify.time.label': 'Meld me om',
+  'notify.time.days': 'Maandag tot en met vrijdag',
+  'push.welcome.title': 'Meldingen staan aan',
+  'push.welcome.body': 'Zo krijg je het ochtendadvies binnen.',
 };

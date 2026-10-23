@@ -106,13 +106,13 @@ export const it: Messages = {
     'Il telefono chiede a Open-Meteo (api.open-meteo.com) le previsioni per un’area di ~1 km attorno al centro del percorso, mai i tuoi indirizzi. Open-Meteo vede quell’area e il tuo indirizzo IP.',
   'privacy.push.title': 'Notifiche (solo se le attivi)',
   'privacy.push.body':
-    'Il telefono si registra presso il suo servizio push (Apple, Google o Mozilla), che gli assegna un indirizzo per le notifiche. Per ora quell’indirizzo resta su questo telefono.',
+    'Il telefono si registra presso il suo servizio push (Apple, Google, Mozilla o Microsoft), che gli assegna un indirizzo per le notifiche. Quando attivi le notifiche, quell’indirizzo va al nostro server, così può mandarti il consiglio del mattino.',
   'privacy.server.title': 'Il nostro server',
   'privacy.server.body':
-    'Ancora niente: oggi l’app funziona senza il nostro server. Quando arriveranno le notifiche del mattino, il server salverà solo la tua iscrizione push, l’area di ~1 km e la direzione del percorso, e i tuoi orari, e questa pagina lo dirà prima.',
+    'Solo se attivi le notifiche. Il nostro server, gestito da Cloudflare, salva allora: il tuo indirizzo push e la lingua; l’area di ~1 km attorno al centro del percorso e la sua direzione, mai i tuoi indirizzi; la fascia di viaggio, i giorni e l’orario della notifica; un registro delle notifiche inviate (14 giorni) e dei giorni in cui hai aperto l’app (30 giorni). Un telefono che per 60 giorni non apre l’app e non riceve notifiche viene cancellato. Il nostro codice non registra mai il tuo indirizzo IP, l’indirizzo push o la posizione; Cloudflare tratta il tuo indirizzo IP per consegnare ogni richiesta.',
   'privacy.delete.title': 'Cancellare',
   'privacy.delete.body':
-    'Cancella i dati di questo sito dalle impostazioni del browser per eliminare tutto ciò che è salvato sul telefono.',
+    '“Cancella i miei dati” elimina tutto in una volta, su questo telefono e sul nostro server. I dati cancellati dal server restano per 7 giorni nella cronologia di ripristino del database di Cloudflare, poi spariscono. Cancellare i dati del sito dal browser elimina solo ciò che è su questo telefono.',
 
   'about.title': 'Informazioni',
   'about.body':
@@ -137,8 +137,25 @@ export const it: Messages = {
   'notify.title': 'Notifica del mattino',
   'notify.body': 'Il consiglio sulla schermata di blocco prima di partire.',
   'notify.toggle': 'Notifica del mattino',
-  'notify.on': 'Attiva. Le notifiche quotidiane partiranno con un prossimo aggiornamento.',
+  'notify.on':
+    'Attiva. Sta arrivando una notifica di prova; il consiglio quotidiano partirà con un prossimo aggiornamento.',
   'notify.denied':
     'Le notifiche sono bloccate. Consentile per Fiets Vandaag nelle impostazioni del telefono.',
   'notify.error': 'Non è stato possibile attivare le notifiche. Riprova.',
+  'privacy.delete.button': 'Cancella i miei dati',
+  'privacy.delete.confirm':
+    'Così elimini percorso, impostazioni e notifiche da questo telefono e dal nostro server. Non si può annullare.',
+  'privacy.delete.yes': 'Cancella tutto',
+  'privacy.delete.cancel': 'Annulla',
+  'privacy.delete.done': 'I tuoi dati sono stati cancellati.',
+  'privacy.delete.error': 'Non è stato possibile cancellare i dati. Controlla la connessione e riprova.',
+  'notify.invite.label': 'Codice invito',
+  'notify.invite.hint': 'Lo trovi nel link o nel codice QR dell’invito.',
+  'notify.invite.missing': 'Inserisci prima il codice invito.',
+  'notify.invite.invalid': 'Questo codice invito non è valido. Controllalo e riprova.',
+  'notify.capacity': 'Fiets Vandaag per ora è al completo. Riprova più tardi.',
+  'notify.time.label': 'Avvisami alle',
+  'notify.time.days': 'Dal lunedì al venerdì',
+  'push.welcome.title': 'Notifiche attive',
+  'push.welcome.body': 'Il consiglio del mattino ti arriverà così.',
 };

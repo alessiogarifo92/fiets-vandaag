@@ -28,3 +28,8 @@ export async function withErrorBoundary(run: () => Response | Promise<Response>)
     return errorResponse(500, 'internal', 'Internal error');
   }
 }
+
+/** 400 for a body that parsed but failed validation; `fields` says which field and why. */
+export function invalidBody(fields: Record<string, string>): Response {
+  return json(apiError('invalid_body', 'Request body is not valid', fields), 400);
+}
