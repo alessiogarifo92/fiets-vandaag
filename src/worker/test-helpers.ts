@@ -95,4 +95,5 @@ export const validRoute = {
   window: { start: 480, end: 540 },
   weekdays: [1, 2, 3, 4, 5],
   notifyAt: 435,
+  rideMin: 25,
 };

@@ -129,13 +129,14 @@ interface RouteRow {
   window_end_min: number;
   weekdays: number;
   notify_min: number | null;
+  ride_min: number | null;
 }
 
 export async function handleGetMe(request: Request, ctx: RouteContext): Promise<Response> {
   const device = await authenticate(request, ctx.env.DB, ctx.now());
   if (!device) return unauthorized();
   const { results } = await ctx.env.DB.prepare(
-    `SELECT slot, cell, bearing_deg, window_start_min, window_end_min, weekdays, notify_min
+    `SELECT slot, cell, bearing_deg, window_start_min, window_end_min, weekdays, notify_min, ride_min
      FROM routes WHERE device_id = ? ORDER BY slot`,
   )
     .bind(device.id)
@@ -150,6 +151,7 @@ export async function handleGetMe(request: Request, ctx: RouteContext): Promise<
       window: { start: r.window_start_min, end: r.window_end_min },
       weekdays: weekdaysFromMask(r.weekdays),
       notifyAt: r.notify_min,
+      rideMin: r.ride_min,
     })),
   });
 }

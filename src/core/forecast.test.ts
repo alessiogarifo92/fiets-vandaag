@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FORECAST_MODEL, forecastUrl, parseForecast } from './forecast';
+import { FORECAST_MODEL, forecastUrl, parseForecast, parseForecasts } from './forecast';
 
 describe('forecastUrl', () => {
   it('asks for the rounded cell, the fixed model and Amsterdam time', () => {
@@ -12,6 +12,43 @@ describe('forecastUrl', () => {
     expect(url.searchParams.get('hourly')).toBe(
       'precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
     );
+  });
+
+  it('asks for several cells in one request with exactly the same other parameters', () => {
+    const one = new URL(forecastUrl({ lat: 52.38, lon: 4.905 }));
+    const many = new URL(
+      forecastUrl([
+        { lat: 52.38, lon: 4.905 },
+        { lat: 52.09, lon: 5.12 },
+      ]),
+    );
+    expect(many.searchParams.get('latitude')).toBe('52.38,52.09');
+    expect(many.searchParams.get('longitude')).toBe('4.905,5.12');
+    for (const key of ['hourly', 'models', 'timezone', 'forecast_days', 'wind_speed_unit'])
+      expect(many.searchParams.get(key)).toBe(one.searchParams.get(key));
+    expect(forecastUrl([{ lat: 52.38, lon: 4.905 }])).toBe(forecastUrl({ lat: 52.38, lon: 4.905 }));
+  });
+});
+
+describe('parseForecasts', () => {
+  const location = {
+    hourly: {
+      time: ['2026-10-23T07:00'],
+      precipitation_probability: [10],
+      precipitation: [0],
+      wind_speed_10m: [12],
+      wind_direction_10m: [250],
+      wind_gusts_10m: [30],
+    },
+  };
+  it('reads an array in request order, and a single object for one cell', () => {
+    const [a, b] = parseForecasts([location, { error: true }], 2)!;
+    expect(a).toHaveLength(1);
+    expect(b).toBeNull();
+    expect(parseForecasts(location, 1)![0]).toHaveLength(1);
+  });
+  it('is null when the count does not match', () => {
+    expect(parseForecasts([location], 2)).toBeNull();
   });
 });
 

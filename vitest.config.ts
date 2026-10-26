@@ -13,7 +13,13 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       include: ['src/core/**/*.ts', 'src/worker/**/*.ts', 'src/app/lib/**/*.ts', 'src/app/sw-core.ts'],
-      exclude: ['**/*.test.ts', '**/*.d.ts', 'src/worker/test-*.ts', 'src/app/lib/test-api.ts'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.d.ts',
+        'src/worker/test-*.ts',
+        'src/worker/cron/fixtures.ts',
+        'src/app/lib/test-api.ts',
+      ],
       reporter: ['text', 'json-summary', 'html'],
     },
     projects: [

@@ -62,6 +62,17 @@ describe('PUT /api/routes/:slot', () => {
     expect(row).toEqual({ next_run_at: 123 });
   });
 
+  it('stores the ride time, NULL from an older app, and a new ride time clears the schedule', async () => {
+    const dev = await register();
+    const { rideMin: _omitted, ...old } = validRoute;
+    await callJson('/api/routes/1', 'PUT', old, dev.token);
+    const rideMin = () => env.DB.prepare('SELECT ride_min, next_run_at FROM routes').first();
+    expect(await rideMin()).toEqual({ ride_min: null, next_run_at: null });
+    await env.DB.prepare('UPDATE routes SET next_run_at = 123').run();
+    await callJson('/api/routes/1', 'PUT', validRoute, dev.token);
+    expect(await rideMin()).toEqual({ ride_min: 25, next_run_at: null });
+  });
+
   it('keeps slots 1 and 2 apart', async () => {
     const dev = await register();
     await callJson('/api/routes/1', 'PUT', validRoute, dev.token);

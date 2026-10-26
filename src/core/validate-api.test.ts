@@ -148,9 +148,20 @@ describe('validateServerRoute', () => {
     window: { start: 480, end: 540 },
     weekdays: [1],
     notifyAt: null,
+    rideMin: 25,
   };
   it('keeps only the server fields', () => {
     expect(validateServerRoute({ ...route, from: { lat: 1, lon: 2 } })).toEqual({ ok: true, value: route });
+  });
+  it('accepts a route without rideMin from an older app', () => {
+    const { rideMin: _omitted, ...old } = route;
+    expect(validateServerRoute(old)).toEqual({ ok: true, value: { ...route, rideMin: null } });
+  });
+  it.each([0, 61, 12.5, '25'])('rejects rideMin %o', (rideMin) => {
+    expect(fieldOf(validateServerRoute({ ...route, rideMin }) as never)).toBe('rideMin');
+  });
+  it('accepts a ride as long as the window', () => {
+    expect(validateServerRoute({ ...route, rideMin: 60 }).ok).toBe(true);
   });
   it('reports the first failing field', () => {
     expect(fieldOf(validateServerRoute(null) as never)).toBe('body');

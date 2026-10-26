@@ -109,7 +109,7 @@ export const en = {
     'Your phone registers with its push service (Apple, Google, Mozilla or Microsoft), which gives it an address for notifications. When you turn notifications on, that address goes to our server so it can send you the morning advice.',
   'privacy.server.title': 'Our server',
   'privacy.server.body':
-    'Only if you turn on notifications. Our server, run by Cloudflare, then stores: your push address and language; the ~1 km area around the middle of your route and its direction, never your addresses; your commute window, weekdays and notification time; a log of sent notifications (14 days) and of the days you opened the app (30 days). A phone that neither opens the app nor receives a notification for 60 days is deleted. Our code never logs your IP address, push address or location; Cloudflare handles your IP address to deliver each request.',
+    'Only if you turn on notifications. Our server, run by Cloudflare, then stores: your push address and language; the ~1 km area around the middle of your route and its direction, never your addresses; your commute window, estimated ride time, weekdays and notification time; a log of sent notifications (14 days) and of the days you opened the app (30 days). A phone that neither opens the app nor receives a notification for 60 days is deleted. Our code never logs your IP address, push address or location; Cloudflare handles your IP address to deliver each request.',
   'privacy.delete.title': 'Deleting',
   'privacy.delete.body':
     '“Delete my data” removes everything from this phone and from our server at once. Deleted server data stays in Cloudflare’s 7-day database recovery history, then it is gone. Clearing this site’s data in your browser removes only what is on this phone.',
@@ -136,7 +136,7 @@ export const en = {
   'notify.title': 'Morning notification',
   'notify.body': 'The advice on your lock screen before you leave.',
   'notify.toggle': 'Morning notification',
-  'notify.on': 'On. A test notification is on its way; the daily advice starts with a coming update.',
+  'notify.on': 'On. A test notification is on its way; the advice arrives every morning at the time below.',
   'notify.denied': 'Notifications are blocked. Allow them for Fiets Vandaag in your phone’s settings.',
   'notify.error': 'Notifications could not be turned on. Try again.',
   'privacy.delete.button': 'Delete my data',
@@ -155,6 +155,8 @@ export const en = {
   'notify.time.days': 'Monday to Friday',
   'push.welcome.title': 'Notifications are on',
   'push.welcome.body': 'This is how the morning advice will reach you.',
+  'push.nodata.title': 'No weather data this morning',
+  'push.nodata.body': 'The forecast could not be loaded. Open the app to check the weather yourself.',
 } as const;
 
 export type MessageKey = keyof typeof en;

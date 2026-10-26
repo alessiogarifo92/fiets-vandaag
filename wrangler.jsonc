@@ -25,8 +25,16 @@
     "VAPID_PUBLIC_KEY": "BFrGVcDRXQBC6PQNYVBkrNJv1Rb9oq6FQfVpNV6vcs_B8mRb1CHPZCvkMmap2iLnvsB5kxmKHaGHDvX_4R34Yik",
     "VAPID_SUBJECT": "https://fiets-vandaag.alessiogarifo92.workers.dev",
     "MAX_DEVICES": "50",
+    // Pushes per cron run, measured in ticket 3 (docs/decisions.md). Lower to 2 if exceededCpu ever shows.
+    "BATCH_SIZE": "4",
   },
-  // Workers Free only: no cron yet (ticket 5 adds the single one), no other bindings.
+  // Workers Free only: this single cron trigger and no other bindings. The account has 5 Free triggers and two
+  // other projects use 2; Fiets Vandaag may use at most 3 (docs/decisions.md, phase 2). UTC 02-11 covers
+  // 04:00-12:00 in Amsterdam in both CET and CEST (docs/architecture.md §4). Only the deployed Worker runs it,
+  // never a preview version.
+  "triggers": {
+    "crons": ["* 2-11 * * *"],
+  },
   // Invocation logs record every request's IP (cf-connecting-ip) and city coordinates (cf.latitude/longitude),
   // which architecture §3 forbids. Only the app's own console logs (status codes, error types) are kept.
   "observability": {

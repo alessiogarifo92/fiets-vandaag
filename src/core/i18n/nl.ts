@@ -110,7 +110,7 @@ export const nl: Messages = {
     'Je telefoon meldt zich aan bij zijn pushdienst (Apple, Google, Mozilla of Microsoft), die er een adres voor meldingen aan geeft. Zet je meldingen aan, dan gaat dat adres naar onze server, zodat die je het ochtendadvies kan sturen.',
   'privacy.server.title': 'Onze server',
   'privacy.server.body':
-    'Alleen als je meldingen aanzet. Onze server, die bij Cloudflare draait, bewaart dan: je pushadres en taal; het gebied van ~1 km rond het midden van je route en de richting ervan, nooit je adressen; je reistijdvak, weekdagen en meldtijd; een logboek van verstuurde meldingen (14 dagen) en van de dagen waarop je de app opende (30 dagen). Een telefoon die 60 dagen de app niet opent en geen melding ontvangt, wordt verwijderd. Onze code logt nooit je IP-adres, pushadres of locatie; Cloudflare verwerkt je IP-adres om elk verzoek af te leveren.',
+    'Alleen als je meldingen aanzet. Onze server, die bij Cloudflare draait, bewaart dan: je pushadres en taal; het gebied van ~1 km rond het midden van je route en de richting ervan, nooit je adressen; je reistijdvak, geschatte fietstijd, weekdagen en meldtijd; een logboek van verstuurde meldingen (14 dagen) en van de dagen waarop je de app opende (30 dagen). Een telefoon die 60 dagen de app niet opent en geen melding ontvangt, wordt verwijderd. Onze code logt nooit je IP-adres, pushadres of locatie; Cloudflare verwerkt je IP-adres om elk verzoek af te leveren.',
   'privacy.delete.title': 'Verwijderen',
   'privacy.delete.body':
     '“Mijn gegevens verwijderen” wist alles in één keer, op deze telefoon en op onze server. Verwijderde servergegevens blijven nog 7 dagen in de herstelgeschiedenis van de database van Cloudflare en zijn daarna weg. De sitegegevens wissen in je browser verwijdert alleen wat op deze telefoon staat.',
@@ -138,7 +138,7 @@ export const nl: Messages = {
   'notify.title': 'Ochtendmelding',
   'notify.body': 'Het advies op je vergrendelscherm voordat je vertrekt.',
   'notify.toggle': 'Ochtendmelding',
-  'notify.on': 'Aan. Er komt nu een testmelding; het dagelijkse advies begint met een volgende update.',
+  'notify.on': 'Aan. Er komt nu een testmelding; het advies komt elke ochtend op de tijd hieronder.',
   'notify.denied':
     'Meldingen zijn geblokkeerd. Sta ze toe voor Fiets Vandaag in de instellingen van je telefoon.',
   'notify.error': 'Meldingen konden niet worden aangezet. Probeer het opnieuw.',
@@ -159,4 +159,6 @@ export const nl: Messages = {
   'notify.time.days': 'Maandag tot en met vrijdag',
   'push.welcome.title': 'Meldingen staan aan',
   'push.welcome.body': 'Zo krijg je het ochtendadvies binnen.',
+  'push.nodata.title': 'Geen weergegevens vanochtend',
+  'push.nodata.body': 'De verwachting kon niet worden geladen. Open de app om het weer zelf te bekijken.',
 };

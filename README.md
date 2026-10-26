@@ -52,7 +52,17 @@ Manual deploy, if CI is unavailable:
 cd /path/to/fiets-vandaag && npm ci && npm run build && npx wrangler d1 migrations apply fiets-vandaag --remote && npx wrangler deploy
 ```
 
-**Cost rule: Workers Free only, nothing is ever billed.** No Workers Paid, no Queues, R2 or other billable binding. When a Free limit is hit the app degrades (skips or delays pushes), it never upgrades. The account already has 2 cron triggers from other projects; this project may add at most 3 (v1 plans one, in ticket 5).
+**Cost rule: Workers Free only, nothing is ever billed.** No Workers Paid, no Queues, R2 or other billable binding. When a Free limit is hit the app degrades (skips or delays pushes), it never upgrades. The account already has 2 cron triggers from other projects; this project may add at most 3 and uses one (below).
+
+## Morning push cron
+
+One trigger, `* 2-11 * * *` UTC (04:00-12:00 in Amsterdam, summer and winter), runs `src/worker/cron/drain.ts` every minute (docs/architecture.md §4). Each run schedules routes whose `next_run_at` is NULL, claims at most `BATCH_SIZE` due routes, and sends each its morning push: the same pill, sentence and wind/rain line as the Today screen, in the device's language, `urgency: high`, TTL until the commute window starts, `topic: route-<slot>`. A push more than 15 minutes late, or after the window has started, is skipped. If Open-Meteo fails, the route is retried every 4 minutes (3 attempts), then gets a short "no weather data" push. A minute with nothing due runs the bounded retention cleanup, at most once an hour.
+
+- **Only production runs it.** Cron triggers fire on the deployed Worker, never on a PR preview. A new or changed trigger took about 10 minutes before its first run.
+- **Check the triggers on the account** (5 Free in total, this project may use 3): `curl -s https://api.cloudflare.com/client/v4/accounts/02a4c350badad3fae1cee187b3a0f738/workers/scripts/fiets-vandaag/schedules -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"`.
+- **What a run did:** Workers Logs, one `drain {...}` line per run with counts only (claimed, statuses, push-service status codes, weather fetched or failed, cleanup).
+- **CPU per run and CPU kills:** GraphQL `workersInvocationsAdaptive` filtered on `scriptName: "fiets-vandaag"`, dimension `status` and quantiles `cpuTimeP50`/`cpuTimeP99` (µs). A kill is `status: exceededResources`; then set `BATCH_SIZE` to `2` (never upgrade the plan).
+- **Pause the pushes** without a code change: in the Cloudflare dashboard, Workers > fiets-vandaag > Settings > Triggers, delete the cron trigger (the next `main` deploy adds it back). To roll back the whole ticket, revert its commit on `main`, then check with the schedules call above that the trigger is gone and delete it in the dashboard if not; the `ride_min` column stays and is ignored.
 
 ## Configuration and secrets
 
@@ -65,6 +75,7 @@ Public values live in `wrangler.jsonc` `vars`. Secrets are set once per Worker w
 | `VAPID_PRIVATE_KEY` | **secret** | Private half (base64url `d` of the P-256 key). Signs the VAPID JWT for every push. |
 | `INVITE_CODE` | **secret** | Code inside the invite link/QR; `POST /api/devices` rejects registrations without it (403 `invite_invalid`; unset = 503 `registration_closed`). |
 | `MAX_DEVICES` | var (default `50`) | Global device cap; registration answers 503 `capacity` when full. Can be overridden as a secret/var in the dashboard without a code change. |
+| `BATCH_SIZE` | var (default `4`) | Morning pushes per cron run (1-10), measured in ticket 3. Lower it to `2` if a cron minute shows `exceededResources` (see "Morning push cron"). |
 
 **Rotating the VAPID key pair invalidates every push subscription.** Every device has to subscribe again (re-enable notifications in the app). Only rotate if the private key leaks. To rotate: generate a new P-256 pair, update `VAPID_PUBLIC_KEY` in `wrangler.jsonc`, `wrangler secret put VAPID_PRIVATE_KEY`, deploy, and tell testers to re-enable notifications.
 
@@ -82,7 +93,7 @@ Same origin, `/api/*` (docs/architecture.md §2, §5). Errors are `{error:{code,
 |---|---|---|
 | `POST /api/devices {invite, lang, push}` | invite code | 201 `{deviceId, secret}`; only `sha256(secret)` is stored. 403 `invite_invalid`, 503 `capacity` at `MAX_DEVICES`. The push endpoint must be on fcm.googleapis.com, *.push.services.mozilla.com, web.push.apple.com or *.notify.windows.com. Re-registering the same endpoint replaces the old device. Sends a welcome push (skipped without `VAPID_PRIVATE_KEY`). |
 | `GET\|PATCH\|DELETE /api/devices/me` | `Bearer <id>.<secret>` | Read the device and its routes; change `lang` and/or `push` (409 `endpoint_taken`); delete the device with its routes, deliveries and opens in one transaction. |
-| `PUT\|DELETE /api/routes/:slot` (1 or 2) | Bearer | `{cell, bearing, window, weekdays, notifyAt}`: midpoint cell and bearing only, never start/end. A change clears `next_run_at` for the cron (ticket 5). |
+| `PUT\|DELETE /api/routes/:slot` (1 or 2) | Bearer | `{cell, bearing, window, weekdays, notifyAt, rideMin}`: midpoint cell, bearing and estimated ride minutes only, never start/end (`rideMin` is optional for older apps). A change clears `next_run_at`, and the cron schedules the route again. |
 | `POST /api/opens {date, source}` | Bearer | One row per device, Amsterdam date and source (`app`/`notification`). |
 
 **Invite code strength:** the code is shared by every invitee and there is no rate limit (the Rate Limiting binding is deferred), so it must not be guessable: at least 10 random characters, for example `node -e 'console.log(require("crypto").randomBytes(8).toString("base64url"))'`. If it leaks, rotate it (`npx wrangler secret put INVITE_CODE`) and delete the unwanted devices in the D1 console of the Cloudflare dashboard: with `T` the epoch milliseconds of the leak, run `DELETE FROM deliveries WHERE route_id IN (SELECT r.id FROM routes r JOIN devices d ON d.id = r.device_id WHERE d.created_at > T)`, then the same filter for `routes` and `opens` (`device_id IN (SELECT id FROM devices WHERE created_at > T)`), then `DELETE FROM devices WHERE created_at > T`. Registrations whose welcome push the push service rejects (400/404/410) or whose keys are invalid are removed automatically.
